@@ -1,0 +1,10 @@
+*.swp
+_opam/
+_build/
+dist/
+*.docdir
+*.native
+*.byte
+*.merlin
+*.install
+.DS_Store

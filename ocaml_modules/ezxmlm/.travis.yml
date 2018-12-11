@@ -1,0 +1,12 @@
+language: c
+sudo: false
+services:
+  - docker
+install: wget https://raw.githubusercontent.com/ocaml/ocaml-travisci-skeleton/master/.travis-docker.sh
+script: bash -ex ./.travis-docker.sh
+env:
+  global:
+  - PACKAGE="ezxmlm"
+  matrix:
+  - DISTRO="alpine" OCAML_VERSION="4.02.3"
+  - DISTRO="alpine" OCAML_VERSION="4.06.0"
