@@ -1,0 +1,13 @@
+language: c
+sudo: false
+services:
+  - docker
+install: wget https://raw.githubusercontent.com/ocaml/ocaml-travisci-skeleton/master/.travis-docker.sh
+script: bash -ex ./.travis-docker.sh
+env:
+  global:
+  - PINS="vchan:. vchan-unix:. vchan-xen:."
+  matrix:
+  - PACKAGE="vchan" DISTRO="debian-stable" OCAML_VERSION="4.03.0"
+  - PACKAGE="vchan-unix" DISTRO="debian-testing" OCAML_VERSION="4.03.0"
+  - PACKAGE="vchan-xen" DISTRO="debian-unstable" OCAML_VERSION="4.03.0"
