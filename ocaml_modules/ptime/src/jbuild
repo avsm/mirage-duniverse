@@ -1,0 +1,15 @@
+(jbuild_version 1)
+(library
+ ((name ptime)
+  (public_name ptime)
+  (modules (ptime))
+  (libraries (result))
+  (wrapped false)))
+
+(library
+  ((name ptime_top)
+   (public_name ptime.top)
+   (libraries (compiler-libs.toplevel ptime))
+   (modules (ptime_top))
+   (wrapped false)))
+

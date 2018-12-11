@@ -1,0 +1,11 @@
+(jbuild_version 1)
+
+(library 
+  ((name ptime_os)
+   (public_name ptime.os)
+   (libraries (ptime))
+   (modules (ptime_clock))
+   (c_names (ptime_clock_stubs))
+   (wrapped false)))
+
+
