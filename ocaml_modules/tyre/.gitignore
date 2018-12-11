@@ -1,0 +1,9 @@
+_build
+*.byte
+*.native
+.gh-pages
+perf.*
+.merlin
+*.install
+
+benchmark/data/http-requests.txt.*
