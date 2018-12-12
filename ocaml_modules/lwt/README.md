@@ -116,7 +116,7 @@ rewriting the manual). In the meantime:
 or just "threads." This will be fixed in the new manual. `'a Lwt.t` is a
 promise, and has nothing to do with system or preemptive threads.*
 
-[manual]:   http://ocsigen.org/lwt/manual/
+[manual]:   http://ocsigen.org/lwt/
 [rwo-lwt]:  https://github.com/dkim/rwo-lwt#readme
 [mirage-tutorial]: https://mirage.io/wiki/tutorial-lwt
 [counter-server]: http://www.baturin.org/code/lwt-counter-server/
@@ -131,9 +131,9 @@ on [discuss.ocaml.org][discourse], or on [Stack Overflow][so]. Please do ask!
 Even apparently simple questions often end up educating other users, not to
 mention enlightening the maintainers!
 
-Subscribe to the [announcements issue][announcements] to get news about Lwt
-releases. It is less noisy than watching the whole repository. Announcements are
-also made in [/r/ocaml][reddit], and on [discuss.ocaml.org][discourse].
+Release announcements are made in [/r/ocaml][reddit], and on
+[discuss.ocaml.org][discourse]. Watching the repo for "Releases only" is also an
+option.
 
 [gitter]: https://gitter.im/ocaml-lwt/Lobby
 [irc]:    http://webchat.freenode.net/?channels=#ocaml
@@ -191,5 +191,6 @@ serialization combinators
 logging
 - [lwt-parallel](https://github.com/ivg/parallel) —
 distributed computing
+- [mwt](https://github.com/hcarty/mwt) — preemptive (system) thread pools
 - [opium](https://github.com/rgrinberg/opium) —
 web framework

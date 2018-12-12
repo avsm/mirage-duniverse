@@ -8,10 +8,10 @@ PKGS=\
 	-package react
 
 INCS=\
-	-I ${BLD}/core \
-	-I ${BLD}/ppx \
-	-I ${BLD}/react \
-	-I ${BLD}/unix
+	-I ${BLD}/core/.lwt.objs \
+	-I ${BLD}/ppx/.ppx_lwt.objs \
+	-I ${BLD}/react/.lwt_react.objs \
+	-I ${BLD}/unix/.lwt_unix.objs
 
 MLIS=\
 	$(wildcard ${SRC}/core/*.mli) \
@@ -38,3 +38,7 @@ api/wiki/index.wiki: ${MLIS} apiref-intro
 		-d api/wiki \
 		-i $(shell ocamlfind query wikidoc) -g odoc_wiki.cma \
 		${MLIS}
+
+.PHONY : clean
+clean :
+	rm -rf api/

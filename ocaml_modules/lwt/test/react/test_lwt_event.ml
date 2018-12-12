@@ -44,6 +44,27 @@ let suite = suite "lwt_event" [
        push 1;
        return (!l = [1]));
 
+  test "limit_race"
+    (fun () ->
+       let l = ref [] in
+       let event, push = Lwt_react.E.create() in
+       let prepend n = l := n :: !l
+       in
+       event
+       |> Lwt_react.E.limit (fun () ->
+           let p = Lwt_unix.sleep 1. in
+           Lwt.async (fun () ->
+               Lwt_unix.sleep 0.1 >|= fun () ->
+               Lwt.on_success p (fun () -> push 2)); p)
+       |> React.E.map prepend
+       |> ignore;
+       push 0;
+       push 1;
+
+       Lwt_main.run (Lwt_unix.sleep 2.5);
+       return (!l = [2;2;0]));
+
+
   test "of_stream"
     (fun () ->
        let stream, push = Lwt_stream.create () in
@@ -75,4 +96,21 @@ let suite = suite "lwt_event" [
          Lwt_condition.signal cond ();
          return (!l = [4; 3; 2; 1]));
 
+  test "with_finaliser lifetime" begin fun () ->
+    let e, push = React.E.create () in
+    let finalizer_ran = ref false in
+    let e' = Lwt_react.E.with_finaliser (fun () -> finalizer_ran := true) e in
+
+    Gc.full_major ();
+    let check1 = !finalizer_ran = false in
+
+    let p = Lwt_react.E.next e' in
+    push ();
+    p >>= fun () ->
+
+    Gc.full_major ();
+    let check2 = !finalizer_ran = true in
+
+    Lwt.return (check1 && check2)
+  end;
 ]

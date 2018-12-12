@@ -20,7 +20,13 @@ module E = struct
   let with_finaliser f event =
     let r = ref () in
     Gc.finalise (finalise f) r;
-    map (fun x -> ignore r; x) event
+    map
+    #if OCAML_VERSION < (4, 03, 0)
+      (fun x -> ignore r; x)
+    #else
+      (fun x -> ignore (Sys.opaque_identity r); x)
+    #endif
+      event
 
   let next ev =
     let waiter, wakener = Lwt.task () in
@@ -29,10 +35,10 @@ module E = struct
     waiter
 
   let limit f e =
-    (* Thread which prevent [e] to occur while it is sleeping *)
+    (* Thread which prevents [e] from occurring while it is sleeping *)
     let limiter = ref Lwt.return_unit in
 
-    (* The occurence that is delayed until the limiter returns. *)
+    (* The occurrence that is delayed until the limiter returns. *)
     let delayed = ref None in
 
     (* The resulting event. *)
@@ -46,18 +52,25 @@ module E = struct
                 delivering. *)
              match !delayed with
              | Some cell ->
-               (* An occurence is alreayd queued, replace it. *)
+               (* An occurrence is already queued, replace it. *)
                cell := x;
                None
              | None ->
                let cell = ref x in
                delayed := Some cell;
-               Lwt.on_success !limiter (fun () -> let x = !cell in delayed := None; limiter := f (); push x);
+               Lwt.on_success !limiter (fun () ->
+                  if Lwt.is_sleeping !limiter then
+                    delayed := None
+                  else
+                    let x = !cell in
+                    delayed := None;
+                    limiter := f ();
+                    push x);
                None
            end else begin
              (* Set the limiter for future events. *)
              limiter := f ();
-             (* Send the occurence now. *)
+             (* Send the occurrence now. *)
              push x;
              None
            end)
@@ -105,7 +118,7 @@ module E = struct
     keeped := map ignore e :: !keeped
 
   (* +---------------------------------------------------------------+
-     | Event transofrmations                                         |
+     | Event transformations                                         |
      +---------------------------------------------------------------+ *)
 
   let run_p e =
@@ -260,13 +273,19 @@ module S = struct
   let with_finaliser f signal =
     let r = ref () in
     Gc.finalise (finalise f) r;
-    map (fun x -> ignore r; x) signal
+    map
+    #if OCAML_VERSION < (4, 03, 0)
+      (fun x -> ignore r; x)
+    #else
+      (fun x -> ignore (Sys.opaque_identity r); x)
+    #endif
+      signal
 
   let limit ?eq f s =
     (* Thread which prevent [s] to changes while it is sleeping *)
     let limiter = ref (f ()) in
 
-    (* The occurence that is delayed until the limiter returns. *)
+    (* The occurrence that is delayed until the limiter returns. *)
     let delayed = ref None in
 
     (* The resulting event. *)
@@ -280,7 +299,7 @@ module S = struct
                 delivering. *)
              match !delayed with
              | Some cell ->
-               (* An occurence is alreayd queued, replace it. *)
+               (* An occurrence is already queued, replace it. *)
                cell := x;
                None
              | None ->
@@ -291,7 +310,7 @@ module S = struct
            end else begin
              (* Set the limiter for future events. *)
              limiter := f ();
-             (* Send the occurence now. *)
+             (* Send the occurrence now. *)
              push x;
              None
            end)
@@ -306,7 +325,7 @@ module S = struct
     keeped := map ignore s :: !keeped
 
   (* +---------------------------------------------------------------+
-     | Signal transofrmations                                        |
+     | Signal transformations                                        |
      +---------------------------------------------------------------+ *)
 
   let run_s ?eq s =

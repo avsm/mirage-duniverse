@@ -4,25 +4,13 @@ default: build
 
 # build the usual development packages
 .PHONY: build
-build: check-config
-	jbuilder build --dev
+build:
+	dune build
 
 # run unit tests for package lwt
 .PHONY: test
 test: build
-	jbuilder runtest --dev -j 1 --no-buffer
-
-# configuration
-.PHONY: check-config
-check-config:
-	@if [ ! -f src/jbuild-ignore ] ; \
-	then \
-	    make default-config ; \
-	fi
-
-.PHONY: default-config
-default-config:
-	ocaml src/util/configure.ml -use-libev false
+	dune runtest -j 1 --no-buffer
 
 # Install dependencies needed during development.
 .PHONY : dev-deps
@@ -30,18 +18,18 @@ dev-deps :
 	opam install --yes --unset-root \
 	  bisect_ppx \
 	  cppo \
-	  jbuilder \
+	  dune \
 	  ocaml-migrate-parsetree \
 	  ocamlfind \
 	  ppx_tools_versioned \
 	  react \
 	  result \
 
-# Use jbuilder/odoc to generate static html documentation.
+# Use Dune+odoc to generate static html documentation.
 # Currenty requires ocaml 4.03.0 to install odoc.
 .PHONY: doc
 doc:
-	jbuilder build @doc
+	dune build @doc
 
 # Build HTML documentation with ocamldoc
 .PHONY: doc-api-html
@@ -74,12 +62,19 @@ install-for-packaging-test: clean
 	opam pin add --yes --no-action lwt_react .
 	opam reinstall --yes lwt lwt_ppx lwt_react
 
+.PHONY: uninstall-after-packaging-test
+uninstall-after-packaging-test:
+	opam remove --yes lwt lwt_ppx lwt_react
+	opam pin remove --yes lwt
+	opam pin remove --yes lwt_ppx
+	opam pin remove --yes lwt_react
+
 .PHONY: clean
 clean:
-	jbuilder clean
+	dune clean
 	find . -name '.merlin' | xargs rm -f
 	rm -fr docs/api
-	rm -f src/jbuild-ignore src/unix/lwt_config src/core/flambda.flag
+	rm -f src/jbuild-ignore src/unix/lwt_config
 	for TEST in `ls -d test/packaging/*/*` ; \
 	do \
 	    make -wC $$TEST clean ; \
@@ -89,9 +84,9 @@ clean:
 BISECT_FILES_PATTERN := _build/default/test/*/bisect*.out
 
 .PHONY: coverage
-coverage: clean check-config
+coverage: clean
 	BISECT_ENABLE=yes make build
-	BISECT_ENABLE=yes jbuilder runtest --dev -j 1 --no-buffer
+	BISECT_ENABLE=yes dune runtest -j 1 --no-buffer
 	bisect-ppx-report \
 	    -I _build/default/ -html _coverage/ \
 	    -text - -summary-only \
