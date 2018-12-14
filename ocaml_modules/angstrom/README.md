@@ -63,9 +63,14 @@ let expr : int t =
 
 let eval (str:string) : int =
   match parse_string expr str with
-  | Result.Ok v      -> v
-  | Result.Error msg -> failwith msg
+  | Ok v      -> v
+  | Error msg -> failwith msg
 ```
+
+For an explanation of the infix operators and other combinators used in the
+implementation of this example, see the documentation in the [`mli`][mli].
+
+[mli]: https://github.com/inhabitedtype/angstrom/blob/master/lib/angstrom.mli
 
 
 ## Comparison to Other Libraries
