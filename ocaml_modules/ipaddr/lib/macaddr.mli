@@ -24,8 +24,6 @@ exception Parse_error of string * string [@@deriving sexp]
 (** Type of the hardware address (MAC) of an ethernet interface. *)
 type t [@@deriving sexp]
 
-val compare : t -> t -> int
-
 (** Functions converting MAC addresses to bytes/string and vice
     versa. *)
 
@@ -52,6 +50,10 @@ val to_bytes : t -> string
 (** [to_string ?(sep=':') mac_addr] is the [sep]-separated string representation
     of [mac_addr], i.e. xx:xx:xx:xx:xx:xx. *)
 val to_string : ?sep:char -> t -> string
+
+(** [pp f mac_addr] outputs a human-readable representation of [mac_addr] to
+    the formatter [f]. *)
+val pp : Format.formatter -> t -> unit
 
 (** [broadcast] is ff:ff:ff:ff:ff:ff. *)
 val broadcast : t
