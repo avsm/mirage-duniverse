@@ -58,14 +58,12 @@ module IO = struct
        | e -> Lwt.fail e)
 
   let read_exactly ic len =
-    let buf = String.create len in
+    let buf = Bytes.create len in
     read_exactly ic buf 0 len >>= function
-      | true -> return (Some buf)
+      | true -> return (Some (Bytes.to_string buf))
       | false -> return None
 
   let write = Lwt_io.write
-
-  let write_line = Lwt_io.write_line
 
   let flush = Lwt_io.flush
 
