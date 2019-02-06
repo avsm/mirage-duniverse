@@ -15,7 +15,6 @@
  *)
 
 open Mirage_block
-open Result
 
 type 'a io = 'a Lwt.t
 

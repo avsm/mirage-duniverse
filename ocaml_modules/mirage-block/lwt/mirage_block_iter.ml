@@ -16,7 +16,6 @@
  *)
 open Lwt.Infix
 open Mirage_block_lwt_s
-open Result
 module B = Mirage_block
 
 let (>>*=) x f = x >>= function | Ok q -> f q | Error e -> Lwt.return @@ Error e

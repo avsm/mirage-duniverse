@@ -15,8 +15,6 @@
  *
  *)
 
-open Result
-
 module type S = Mirage_block.S
   with type 'a io = 'a Lwt.t
    and type page_aligned_buffer = Cstruct.t

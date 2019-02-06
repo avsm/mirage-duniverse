@@ -15,7 +15,6 @@
  *
  *)
 
-open Result
 open Lwt.Infix
 open Mirage_block_lwt_s
 open Mirage_block_log

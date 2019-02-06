@@ -1,3 +1,9 @@
+## v1.2.0 (2019-02-03)
+- port to dune from jbuilder (@avsm)
+- upgrade opam metadata to 2.0 (@avsm)
+- switch to dune-release from topkg (@avsm)
+- test OCaml 4.07 as well (@avsm)
+
 ## 1.1.0 (2017-05-22)
 
 - `resize` should be able to return `write_error`
