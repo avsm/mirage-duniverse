@@ -1,0 +1,8 @@
+(library
+ (name x509)
+ (synopsis "Pure X.509 Public Key Infrastructure in OCaml")
+ (public_name x509)
+ (wrapped false)
+ (flags (:standard -w -8))
+ (libraries asn1-combinators ptime cstruct nocrypto sexplib astring)
+ (preprocess (pps ppx_sexp_conv)))
