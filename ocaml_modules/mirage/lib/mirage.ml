@@ -99,7 +99,6 @@ let etif = Mirage_impl_ethernet.etif
 type arpv4 = Mirage_impl_arpv4.arpv4
 let arpv4 = Mirage_impl_arpv4.arpv4
 let arp = Mirage_impl_arpv4.arp
-let farp = Mirage_impl_arpv4.farp
 
 type v4 = Mirage_impl_ip.v4
 type v6 = Mirage_impl_ip.v6
@@ -172,7 +171,9 @@ let syslog_config = Mirage_impl_syslog.syslog_config
 
 type http = Mirage_impl_http.http
 let http = Mirage_impl_http.http
-let http_server = Mirage_impl_http.http_server
+let http_server = Mirage_impl_http.cohttp_server
+let cohttp_server = Mirage_impl_http.cohttp_server
+let httpaf_server = Mirage_impl_http.httpaf_server
 
 let default_argv = Mirage_impl_argv.default_argv
 let no_argv = Mirage_impl_argv.no_argv
@@ -886,13 +887,14 @@ module Project = struct
       ]
       method! packages =
         (* XXX: use %%VERSION_NUM%% here instead of hardcoding a version? *)
-        let min = "3.3.0" and max = "3.4.0" in
+        let min = "3.4.0" and max = "3.5.0" in
         let common = [
           package ~build:true ~min:"4.04.2" "ocaml";
           package "lwt";
           package ~min ~max "mirage-types-lwt";
           package ~min ~max "mirage-types";
           package ~min ~max "mirage-runtime" ;
+          package ~build:true ~min ~max "mirage" ;
           package ~build:true "ocamlfind" ;
           package ~build:true "ocamlbuild" ;
         ] in

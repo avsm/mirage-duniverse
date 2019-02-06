@@ -19,10 +19,9 @@ build: [
 depends: [
   "ocaml" {>= "4.04.2"}
   "dune" {build & >= "1.1.0"}
-  "ipaddr"             {>= "2.6.0"}
+  "ipaddr"             {>= "3.0.0"}
   "functoria-runtime"  {>= "2.2.2"}
   "fmt"
-  "astring"
   "logs"
 ]
 synopsis: "The base MirageOS runtime library, part of every MirageOS unikernel"

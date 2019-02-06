@@ -260,10 +260,8 @@ type arpv4
 val arpv4: arpv4 typ
 (** Implementation of the [Mirage_types.ARPV4] signature. *)
 
-val arp: ?clock:mclock impl -> ?time:time impl -> ethernet impl -> arpv4 impl
-
-val farp : ?clock:mclock impl -> ?time:time impl -> ethernet impl -> arpv4 impl
-(** Functional ARP implementation provided by the arp library *)
+val arp : ?time:time impl -> ethernet impl -> arpv4 impl
+(** ARP implementation provided by the arp library *)
 
 (** {2 IP configuration}
 
@@ -390,9 +388,10 @@ val dhcp_ipv4_stack: ?group:string -> ?random:random impl -> ?time:time impl -> 
 val static_ipv4_stack: ?group:string -> ?config:ipv4_config -> ?arp:(ethernet impl -> arpv4 impl) -> network impl -> stackv4 impl
 
 (** Generic stack using a [dhcp] and a [net] keys: {!Key.net} and {!Key.dhcp}.
-    - If [target] = [Qubes] then {!qubes_ipv4_stack} is used.
-    - If [net] = [socket] then {!socket_stackv4} is used.
+    - If [target] = [Qubes] then {!qubes_ipv4_stack} is used
+    - Else, if [net] = [socket] then {!socket_stackv4} is used
     - Else, if [dhcp] then {!dhcp_ipv4_stack} is used
+    - Else, if [unix or macosx] then {!socket_stackv4} is used
     - Else, {!static_ipv4_stack} is used.
 
     If a key is not provided, it uses {!Key.net} or {!Key.dhcp} (with the
@@ -401,7 +400,7 @@ val static_ipv4_stack: ?group:string -> ?config:ipv4_config -> ?arp:(ethernet im
 val generic_stackv4:
   ?group:string -> ?config:ipv4_config ->
   ?dhcp_key:bool value ->
-  ?net_key:[ `Direct | `Socket ] value ->
+  ?net_key:[ `Direct | `Socket ] option value ->
   network impl -> stackv4 impl
 
 (** {2 Resolver configuration} *)
@@ -461,7 +460,15 @@ val conduit_direct: ?tls:bool -> stackv4 impl -> conduit impl
 
 type http
 val http: http typ
+
 val http_server: conduit impl -> http impl
+[@@ocaml.deprecated "`http_server` is deprecated. Please use `cohttp_server` or `httpaf_server` instead."]
+
+val cohttp_server: conduit impl -> http impl
+(** [cohttp_server] starts a Cohttp server. *)
+
+val httpaf_server: conduit impl -> http impl
+(** [httpaf_server] starts a http/af server. *)
 
 (** {2 Argv configuration} *)
 

@@ -1,3 +1,21 @@
+### v3.4.1 (2019-02-05)
+
+* Provide a httpaf_server device, and a cohttp_server device (#955, by @anmonteiro)
+* There can only be a single prng device in a unikernel, due to entropy
+  harvesting setup (#959, by @hannesm)
+* Cleanup zarith-freestanding / gmp-freestanding dependencies (#964, by @hannesm)
+* ethernet is now a separate package (#965, by @hannesm)
+* arp now uses the mirage/arp repository by default, the tcpip.arpv4
+  implementation was removed in tcpip 3.7.0 (#965, by @hannesm)
+
+### v3.4.0 (2019-01-11)
+
+* use ipaddr 3.0 without s-expression dependency (#956, by @hannesm)
+* use mirage-clock 2.x and tcpip 3.6.x libraries (#960, #962, by @hannesm)
+* default to socket stack on unix and macos (#958, by @hannesm)
+* use String.split_on_char in mirage-runtime to avoid astring dependency (#957, by @hannesm)
+* add build-dependency on mirage to each unikernel (#953, by @hannesm)
+
 ### 3.3.1 (2018-11-21)
 
 * fix regression: --yes was not passed to opam in 3.3.0 (#950, by @hannesm)
