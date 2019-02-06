@@ -4,5 +4,5 @@
 
 (alias
  (name runtest)
- (deps test.exe)
- (action (run %{deps} --color=always)))
+ (deps (:exe test.exe))
+ (action (run %{exe} --color=always)))
