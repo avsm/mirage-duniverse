@@ -26,8 +26,8 @@ module VNETIF_STACK = Vnetif_common.VNETIF_STACK(Vnetif_backends.Basic)
 
 module Time = Vnetif_common.Time
 module V = Vnetif.Make(Vnetif_backends.Basic)
-module E = Ethif.Make(V)
-module A = Arpv4.Make(E)(Vnetif_common.Clock)(Time)
+module E = Ethernet.Make(V)
+module A = Arp.Make(E)(Time)
 module I = Static_ipv4.Make(Mirage_random_test)(Vnetif_common.Clock)(E)(A)
 module Wire = Tcp.Wire
 module WIRE = Wire.Make(I)
@@ -51,7 +51,7 @@ let create_raw_stack ip backend =
   Mclock.connect () >>= fun clock ->
   V.connect backend >>= fun netif ->
   E.connect netif >>= fun ethif ->
-  A.connect ethif clock >>= fun arpv4 ->
+  A.connect ethif >>= fun arpv4 ->
   I.connect ~ip ~network:(Ipaddr.V4.Prefix.make netmask ip) ~gateway clock ethif arpv4 >>= fun ip ->
   Lwt.return (netif, ethif, arpv4, ip)
 
@@ -93,7 +93,7 @@ let run backend fsm sut () =
                      ~tcp: (fun ~src ~dst data -> pushf (Some(src,dst,data)); Lwt.return_unit)
                      ~udp:(fun ~src:_ ~dst:_ _data -> Lwt.return_unit)
                      ~default:(fun ~proto ~src ~dst _data ->
-                        Logs.debug (fun f -> f "default handler invoked for packet from %a to %a, protocol %d -- dropping" Ipaddr.V4.pp_hum src Ipaddr.V4.pp_hum dst proto); Lwt.return_unit)
+                        Logs.debug (fun f -> f "default handler invoked for packet from %a to %a, protocol %d -- dropping" Ipaddr.V4.pp src Ipaddr.V4.pp dst proto); Lwt.return_unit)
                      rawip
                   )
             ~ipv6:(fun _buf ->

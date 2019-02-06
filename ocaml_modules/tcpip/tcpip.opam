@@ -13,13 +13,13 @@ license: "ISC"
 tags: ["org:mirage"]
 
 build: [
-  ["jbuilder" "subst" "-p" name] {pinned}
-  ["jbuilder" "build" "-p" name "-j" jobs]
-  ["jbuilder" "runtest" "-p" name "-j" jobs] {with-test}
+  ["dune" "subst"] {pinned}
+  ["dune" "build" "-p" name "-j" jobs]
+  ["dune" "runtest" "-p" name "-j" jobs] {with-test}
 ]
 
 depends: [
-  "jbuilder"     {build & >="1.0+beta10"}
+  "dune"     {build & >= "1.0"}
   "configurator" {build}
   "ocaml" {>= "4.03.0"}
   "rresult" {>= "0.5.0"}
@@ -34,20 +34,25 @@ depends: [
   "mirage-protocols" {>= "1.4.0"}
   "mirage-protocols-lwt" {>= "1.4.0"}
   "mirage-time-lwt" {>= "1.0.0"}
-  "ipaddr" {>= "2.2.0"}
+  "ipaddr" {>= "3.0.0"}
+  "macaddr"
   "mirage-profile" {>= "0.5"}
   "fmt"
   "lwt" {>= "3.0.0"}
+  "lwt-dllist"
   "logs" {>= "0.6.0"}
   "duration"
   "io-page-unix"
   "randomconv"
+  "ethernet"
   "mirage-flow" {with-test & >= "1.2.0"}
   "mirage-vnetif" {with-test & >= "0.4.0"}
   "alcotest" {with-test & >="0.7.0"}
   "pcap-format" {with-test}
   "mirage-clock-unix" {with-test & >= "1.2.0"}
   "mirage-random-test" {with-test}
+  "arp-mirage" {with-test}
+  "lru"
 ]
 synopsis: "OCaml TCP/IP networking stack, used in MirageOS"
 description: """
@@ -55,8 +60,6 @@ description: """
 system](https://mirage.io). It provides implementations for the following module types
 (which correspond with the similarly-named protocols):
 
-* ETHERNET
-* ARP
 * IP (via the IPv4 and IPv6 modules)
 * ICMP
 * UDP

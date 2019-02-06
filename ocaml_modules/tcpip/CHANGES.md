@@ -1,3 +1,26 @@
+## v3.7.0 (2019-02-02)
+
+* Use `Lwt_dllist` instead of `Lwt_sequence`, due to the latter being deprecated
+  upstream in Lwt (ocsigen/lwt#361) (#388 by @avsm).
+* Remove arpv4 and ethif sublibraries, now provided by ethernet and arp-mirage
+  opam packages (#380 by @hannesm).
+* Upgrade from jbuilder to dune (#391 @avsm)
+* Switch from topkg to dune-release (#391 @avsm)
+
+### v3.6.0 (2019-01-04)
+
+* The IPv4 implementation now supports reassembly of IPv4 fragments (#375 by @hannesm)
+  - using a LRU cache using up to 256KB memory
+  - out of order fragments are supported
+  - maximum number of fragments is 16
+  - timeout between first and last fragment is 10s
+  - overlapping fragments are dropped
+
+* IPv6: use correct timeout value after first NS message (#334 @djs55)
+
+* Use `Ipaddr.pp` instead of `Ipaddr.pp_hum` due to upstream
+  interface changes (#385 @hannesm).
+
 ### v3.5.1 (2018-11-16)
 
 * socket stack (tcp/udp): catch exception in recv_from and accept (#376 @hannesm)

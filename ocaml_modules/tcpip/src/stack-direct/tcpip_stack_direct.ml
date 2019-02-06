@@ -61,7 +61,7 @@ module Make
 
   let pp fmt t =
     Format.fprintf fmt "mac=%s,ip=%a" (Macaddr.to_string (Ethif.mac t.ethif))
-      (Fmt.list Ipaddr.V4.pp_hum) (Ipv4.get_ip t.ipv4)
+      (Fmt.list Ipaddr.V4.pp) (Ipv4.get_ip t.ipv4)
 
   let tcpv4 { tcpv4; _ } = tcpv4
   let udpv4 { udpv4; _ } = udpv4
@@ -89,7 +89,7 @@ module Make
     with Not_found -> None
 
   let listen t =
-    Logs.debug (fun f -> f "Establishing or updating listener for stack %a" pp t);
+    Log.debug (fun f -> f "Establishing or updating listener for stack %a" pp t);
     let ethif_listener = Ethif.input
         ~arpv4:(Arpv4.input t.arpv4)
         ~ipv4:(

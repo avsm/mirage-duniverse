@@ -1,7 +1,7 @@
 open Lwt.Infix
 
-module Make(E : Mirage_protocols_lwt.ETHIF)(Clock : Mirage_clock_lwt.MCLOCK) (Time : Mirage_time_lwt.S) = struct
-  module A = Arpv4.Make(E)(Clock)(Time)
+module Make(E : Mirage_protocols_lwt.ETHIF)(Time : Mirage_time_lwt.S) = struct
+  module A = Arp.Make(E)(Time)
   (* generally repurpose A, but substitute input and query, and add functions
      for adding/deleting entries *)
   type error = Mirage_protocols.Arp.error
@@ -33,7 +33,7 @@ module Make(E : Mirage_protocols_lwt.ETHIF)(Clock : Mirage_clock_lwt.MCLOCK) (Ti
   let pp fmt repr =
     Format.fprintf fmt "%s" repr
 
-  let connect e clock = A.connect e clock >>= fun base ->
+  let connect e = A.connect e >>= fun base ->
     Lwt.return ({ base; table = (Hashtbl.create 7) })
 
   let disconnect t = A.disconnect t.base
@@ -45,12 +45,12 @@ module Make(E : Mirage_protocols_lwt.ETHIF)(Clock : Mirage_clock_lwt.MCLOCK) (Ti
 
   let input t buffer =
     (* disregard responses, but reply to queries *)
-    try
-    match Arpv4_wire.get_arp_op buffer with
-    | 1 -> A.input t.base buffer
-    | 2 | _ -> Lwt.return_unit
-    with
-    | Invalid_argument s -> Printf.printf "Arpv4_wire failed on buffer: %s" s;
+    let open Arp_packet in
+    match decode buffer with
+    | Ok arp when arp.operation = Request -> A.input t.base buffer
+    | Ok _ -> Lwt.return_unit
+    | Error e ->
+      Format.printf "Arp decoding failed %a" pp_error e ;
       Lwt.return_unit
 
   let add_entry t ip mac =
