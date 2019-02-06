@@ -1,3 +1,16 @@
+(** manipulate Windows system errors
+
+If your application is likely to run on Windows, simply replace uses of
+{!Unix.error_message} with {!Win_error.error_message}. When the application
+runs on Windows, Windows system errors will be decoded; when the application
+runs elsewhere then the existing {!Unix.error_message} function is
+called transparently.
+
+Errors are typically first thrown by the OCaml standard library as {!Unix.Unix_error}
+exceptions. In some cases these are mapped onto their Unix equivalents on
+such as {!Unix.ENOENT}, but when the code isn't recognised OCaml will raise
+{!Unix.EUNKNOWNERR} (-code). This library is able to convert these codes back
+into human-readable strings. *)
 
 type t =
   | Success
@@ -248,15 +261,18 @@ type t =
 
 val of_unix_error: Unix.error -> t option
 (** Convert a unix error into a specific Windows system error, or return None
-    if we don't recognise it. None means that the error list should be expanded,
-    see https://msdn.microsoft.com/en-us/library/windows/desktop/ms681382(v=vs.85).aspx *)
+    if we don't recognise it. None means that the error list should be expanded.
+    @see https://msdn.microsoft.com/en-us/library/windows/desktop/ms681382(v=vs.85).aspx full error code list *)
 
 val to_string: t -> string
-(** Convert the error into a short printable string *)
+(** [to_string t] will convert the error [t] into a short printable string *)
+
+val pp : Format.formatter -> t -> unit [@@ocaml.toplevel_printer]
+(** [pp fmt t] will output a printable string representation of [t] to formatter [fmt] *)
 
 val error_message: Unix.error -> string
 (** A wrapper of [Unix.error_message] which also understands Windows system errors.
 
     If called on a Win32 system, this will decode Unix.EUNKNOWNERR values as Windows
-    system errors. If called on other systems, it simply calls Unix.error_message.
+    system errors. If called on other systems, it simply calls {!Unix.error_message}.
  *)

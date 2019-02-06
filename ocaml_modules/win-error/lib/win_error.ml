@@ -7,6 +7,8 @@ let of_unix_error = function
 
 let to_string = Win_error_to_string.to_string
 
+let pp fmt t = Format.pp_print_string fmt (to_string t)
+
 let error_message e =
   if Sys.os_type = "Win32"
   then

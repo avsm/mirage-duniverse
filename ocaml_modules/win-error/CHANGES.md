@@ -1,3 +1,10 @@
+1.0 (2019-02-05)
+- Improve ocamldoc for the library (@avsm)
+- Port to dune (@avsm)
+- Install toplevel printers (@avsm)
+- Upgrade opam metadata to 2.0 format (@avsm)
+- Move to the mirage github organisation (@djs55)
+
 0.3 (2018-06-14)
 - Port to jbuilder
 

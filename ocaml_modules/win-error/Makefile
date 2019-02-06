@@ -1,10 +1,13 @@
-.PHONY: build test
+.PHONY: build test clean doc
 
 build:
-	jbuilder build
+	dune build
 
 test:
-	jbuilder runtest
+	dune runtest
 
 clean:
-	jbuilder clean
+	dune clean
+
+doc:
+	dune build @doc
