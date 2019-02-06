@@ -68,6 +68,7 @@ let with_variant t extra = { t with extra }
 let without_variant t = { t with extra=None }
 let with_patch t patch = { t with patch }
 let without_patch t = { t with patch=None }
+let with_just_major_and_minor t = { t with patch=None; extra=None }
 
 module Releases = struct
   let v4_00_0 = of_string_exn "4.00.0"
@@ -105,22 +106,30 @@ module Releases = struct
   let v4_08_0 = of_string_exn "4.08.0"
   let v4_08 = v4_08_0
 
+  let v4_09_0 = of_string_exn "4.09.0"
+  let v4_09 = v4_09_0
+
   let all_patches = [
     v4_00_1; v4_01_0; v4_02_0; v4_02_1; v4_02_2;
     v4_02_3; v4_03_0; v4_04_0; v4_04_1; v4_04_2;
     v4_05_0; v4_06_0; v4_06_1; v4_07_0; v4_07_1;
-    v4_08_0 ]
+    v4_08_0; v4_09_0 ]
 
-  let all = [ v4_00; v4_01; v4_02; v4_03;
-              v4_04; v4_05; v4_06; v4_07; v4_08 ]
+  let all = [ v4_00; v4_01; v4_02; v4_03; v4_04;
+              v4_05; v4_06; v4_07; v4_08; v4_09 ]
 
-  let recent = [ v4_03; v4_04; v4_05; v4_06; v4_07 ]
+  let recent = [ v4_02; v4_03; v4_04; v4_05; v4_06; v4_07 ]
 
   let latest = v4_07
 
-  let dev = [ v4_08 ]
+  let dev = [ v4_08; v4_09 ]
 
-  let recent_with_dev = List.concat [recent;dev]
+  let is_dev t =
+    let t = with_just_major_and_minor t in
+    let dev = List.map with_just_major_and_minor dev in
+    List.mem t dev
+
+  let recent_with_dev = List.concat [recent; dev]
 
 end
 
@@ -200,8 +209,10 @@ end
 
 let compiler_variants arch {major; minor; _} =
     match major,minor,arch with
-    | 4,8,`X86_64 -> [[]; [`Afl]; [`Flambda]; [`Flambda;`Frame_pointer]; [`Default_unsafe_string]; [`Force_safe_string]]
-    | 4,8,_ -> [[]; [`Afl]; [`Flambda];[`Default_unsafe_string]; [`Force_safe_string]]
+    | 4,9,`X86_64 -> [[]]
+    | 4,9,_ -> [[]]
+    | 4,8,`X86_64 -> [[]; [`Afl]; [`Flambda]; [`Frame_pointer]; [`Frame_pointer;`Flambda]; [`Default_unsafe_string]]
+    | 4,8,_ -> [[]; [`Afl]; [`Flambda];[`Default_unsafe_string]]
     | 4,7,_ -> [[]; [`Afl]; [`Flambda]; [`Default_unsafe_string]; [`Force_safe_string]]
     | 4,6,_ -> [[]; [`Afl]; [`Flambda]; [`Default_unsafe_string]; [`Force_safe_string]]
     | 4,5,_ -> [[]; [`Afl]; [`Flambda]]
@@ -223,8 +234,9 @@ module Opam = struct
   module V2 = struct
     let name t =
       match t.extra with
+      | Some extra when Releases.is_dev t -> Printf.sprintf "ocaml-variants.%s+trunk+%s" (to_string (without_variant t)) extra
       | Some _ -> "ocaml-variants." ^ (to_string t)
-      | None when List.mem t Releases.dev -> "ocaml-variants." ^ (to_string t)
+      | None when Releases.is_dev t -> Printf.sprintf "ocaml-variants.%s+trunk" (to_string t)
       | None -> "ocaml-base-compiler." ^ (to_string t)
 
     let variant_switch t vs =
