@@ -1,1 +1,4 @@
-(library (name psq))
+(library
+ (name psq)
+ (public_name psq)
+)
