@@ -140,6 +140,9 @@ module Reserved_namespaces = struct
   let reserve ns = Hashtbl.add_exn tbl ~key:ns ~data:()
 
   let () = reserve "merlin"
+  let () = reserve "reason"
+  let () = reserve "refmt"
+  let () = reserve "metaocaml"
 
   let is_in_reserved_namespaces name =
     match get_outer_namespace name with
@@ -165,10 +168,9 @@ module Reserved_namespaces = struct
 
 end
 
-let comes_from_merlin name =
-  match get_outer_namespace name with
-  | Some "merlin" -> true
-  | _ -> false
+let ignore_checks name =
+  Reserved_namespaces.is_in_reserved_namespaces name ||
+  String.is_prefix name ~prefix:"_"
 
 module Registrar = struct
   type element =
@@ -238,7 +240,7 @@ module Registrar = struct
     | None ->
       let other_contexts =
         Hashtbl.fold t.all_by_context ~init:[] ~f:(fun ~key:ctx ~data:{ all } acc ->
-          if Polymorphic_compare.(<>) context ctx && Map.mem all name then
+          if Poly.(<>) context ctx && Map.mem all name then
             match t.string_of_context ctx with
             | None -> acc
             | Some s -> (s ^ "s") :: acc

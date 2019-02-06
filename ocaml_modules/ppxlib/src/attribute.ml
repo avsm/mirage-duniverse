@@ -4,7 +4,7 @@ let poly_equal a b =
   let module Poly = struct
     type t = T : _ -> t
   end in
-  Polymorphic_compare.equal (Poly.T a) (Poly.T b)
+  Base.Poly.equal (Poly.T a) (Poly.T b)
 ;;
 
 module Context = struct
@@ -80,15 +80,6 @@ module Context = struct
     | Psig_extension (e, l) -> (e, l)
     | _ -> failwith "Attribute.Context.get_psig_extension"
 
-  let get_rtag : row_field -> _ = function
-    | Rtag (lbl, attrs, can_be_constant, params_opts) ->
-      (lbl, attrs, can_be_constant, params_opts)
-    | Rinherit _ -> failwith "Attribute.Context.get_rtag"
-
-  let get_otag : object_field -> _ = function
-    | Otag (lbl, attrs, typ) -> (lbl, attrs, typ)
-    | Oinherit _ -> failwith "Attribute.Context.get_otag"
-
   let get_attributes : type a. a t -> a -> attributes = fun t x ->
     match t with
     | Label_declaration       -> x.pld_attributes
@@ -116,8 +107,16 @@ module Context = struct
     | Pstr_eval               -> snd (get_pstr_eval      x)
     | Pstr_extension          -> snd (get_pstr_extension x)
     | Psig_extension          -> snd (get_psig_extension x)
-    | Rtag                    -> let (_, attrs, _, _) = get_rtag x in attrs
-    | Object_type_field       -> let (_, attrs, _) = get_otag x in attrs
+    | Rtag                    ->
+      begin match x with
+      | Rtag (_, attrs, _, _) -> attrs
+      | Rinherit _ -> []
+      end
+    | Object_type_field       ->
+      begin match x with
+      | Otag (_, attrs, _) -> attrs
+      | Oinherit _ -> []
+      end
 
   let set_attributes : type a. a t -> a -> attributes -> a = fun t x attrs ->
     match t with
@@ -150,11 +149,21 @@ module Context = struct
     | Psig_extension ->
       { x with psig_desc = Psig_extension (get_psig_extension x |> fst, attrs) }
     | Rtag                   ->
-      let (lbl, _, can_be_constant, params_opts) = get_rtag x in
-      Rtag (lbl, attrs, can_be_constant, params_opts)
+      begin match x with
+      | Rtag (lbl, _, can_be_constant, params_opts) ->
+        Rtag (lbl, attrs, can_be_constant, params_opts)
+      | Rinherit _ ->
+        assert (List.is_empty attrs);
+        x
+      end
     | Object_type_field ->
-      let (lbl, _, typ) = get_otag x in
-      Otag (lbl, attrs, typ)
+      begin match x with
+      | Otag (lbl, _, typ) ->
+        Otag (lbl, attrs, typ)
+      | Oinherit _ ->
+        assert (List.is_empty attrs);
+        x
+      end
 
   let desc : type a. a t -> string = function
     | Label_declaration       -> "label declaration"
@@ -288,7 +297,7 @@ let declare name context pattern k =
 module Attribute_table = Caml.Hashtbl.Make(struct
     type t = string loc
     let hash : t -> int = Hashtbl.hash
-    let equal : t -> t -> bool = Polymorphic_compare.equal
+    let equal : t -> t -> bool = Poly.equal
   end)
 
 let not_seen = Attribute_table.create 128
@@ -427,7 +436,7 @@ end
 
 let check_attribute registrar context name =
   if not (Name.Whitelisted.is_whitelisted ~kind:`Attribute name.txt
-          || Name.Reserved_namespaces.is_in_reserved_namespaces name.txt)
+          || Name.ignore_checks name.txt)
   && Attribute_table.mem not_seen name then
     let white_list = Name.Whitelisted.get_attribute_list () in
     Name.Registrar.raise_errorf registrar context ~white_list
@@ -547,7 +556,7 @@ end
 let check_all_seen () =
   let fail name loc =
     let txt = name.txt in
-    if not (Name.comes_from_merlin txt) then
+    if not (Name.ignore_checks txt) then
       Location.raise_errorf ~loc "Attribute `%s' was silently dropped" txt
   in
   Attribute_table.iter fail not_seen

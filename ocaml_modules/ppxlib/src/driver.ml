@@ -640,7 +640,7 @@ let with_preprocessed_input fn ~f =
       In_channel.with_file fn ~f)
 ;;
 
-let relocate = object
+let relocate_mapper = object
   inherit [string * string] Ast_traverse.map_with_context
 
   method! position (old_fn, new_fn) pos =
@@ -650,7 +650,7 @@ let relocate = object
       pos
 end
 
-let load_input (kind : Kind.t) fn input_name ic =
+let load_input (kind : Kind.t) fn input_name ~relocate ic =
   Ocaml_common.Location.input_name := input_name;
   match Migrate_parsetree.Ast_io.from_channel ic with
   | Ok (ast_input_name, ast) ->
@@ -660,10 +660,11 @@ let load_input (kind : Kind.t) fn input_name ic =
         "File contains a binary %s AST but an %s was expected"
         (Kind.describe (Intf_or_impl.kind ast))
         (Kind.describe kind);
-    if String.equal ast_input_name input_name then
-      ast
+    if String.equal ast_input_name input_name || not relocate then
+      ast_input_name, ast
     else
-      Intf_or_impl.map_with_context ast relocate (ast_input_name, input_name)
+      input_name, Intf_or_impl.map_with_context ast relocate_mapper (ast_input_name, input_name)
+
   | Error (Unknown_version _) ->
     Location.raise_errorf ~loc:(Location.in_file fn)
       "File is a binary ast for an unknown version of OCaml"
@@ -690,8 +691,8 @@ let load_input (kind : Kind.t) fn input_name ic =
       };
     Lexer.skip_hash_bang lexbuf;
     match kind with
-    | Intf -> Intf (Parse.interface      lexbuf)
-    | Impl -> Impl (Parse.implementation lexbuf)
+    | Intf -> input_name, Intf (Parse.interface      lexbuf)
+    | Impl -> input_name, Impl (Parse.implementation lexbuf)
 ;;
 
 let load_source_file fn =
@@ -810,7 +811,7 @@ module Create_file_property(Name : sig val name : string end)(T : Sexpable.S) = 
   let set x = t.data <- Some x
 end
 
-let process_file (kind : Kind.t) fn ~input_name ~output_mode ~embed_errors ~output =
+let process_file (kind : Kind.t) fn ~input_name ~relocate ~output_mode ~embed_errors ~output =
   File_property.reset_all ();
   List.iter (List.rev !process_file_hooks) ~f:(fun f -> f ());
   corrections := [];
@@ -840,26 +841,34 @@ let process_file (kind : Kind.t) fn ~input_name ~output_mode ~embed_errors ~outp
     }
   in
 
-  let ast : Some_intf_or_impl.t =
+  let input_name, ast =
     try
-      let ast = with_preprocessed_input fn ~f:(load_input kind fn input_name) in
+      let input_name, ast =
+        with_preprocessed_input fn ~f:(load_input kind fn input_name ~relocate)
+      in
       let ast = extract_cookies ast in
       let config = config ~hook ~expect_mismatch_handler in
       match ast with
-      | Intf x -> Intf (map_signature_gen x ~config)
-      | Impl x -> Impl (map_structure_gen x ~config)
+      | Intf x -> input_name, Some_intf_or_impl.Intf (map_signature_gen x ~config)
+      | Impl x -> input_name, Some_intf_or_impl.Impl (map_structure_gen x ~config)
     with exn when embed_errors ->
     match Location.Error.of_exn exn with
     | None -> raise exn
     | Some error ->
       let loc = Location.none in
       let ext = Location.Error.to_extension error in
-        let open Ast_builder.Default in
-        match kind with
-        | Intf -> Intf (Sig ((module Ppxlib_ast.Selected_ast),
-                             [ psig_extension ~loc ext [] ]))
-        | Impl -> Impl (Str ((module Ppxlib_ast.Selected_ast),
-                             [ pstr_extension ~loc ext [] ]))
+      let open Ast_builder.Default in
+      let ast = match kind with
+        | Intf ->
+           Some_intf_or_impl.Intf
+             (Sig ((module Ppxlib_ast.Selected_ast),
+                   [ psig_extension ~loc ext [] ]))
+        | Impl ->
+           Some_intf_or_impl.Impl
+             (Str ((module Ppxlib_ast.Selected_ast),
+                   [ pstr_extension ~loc ext [] ]))
+      in
+      input_name, ast
     in
 
     Option.iter !output_metadata_filename ~f:(fun fn ->
@@ -951,7 +960,7 @@ let set_output_mode mode =
   | _, Pretty_print -> assert false
   | Dump_ast   , Dump_ast
   | Dparsetree , Dparsetree -> ()
-  | Reconcile a, Reconcile b when Polymorphic_compare.equal a b -> ()
+  | Reconcile a, Reconcile b when Poly.equal a b -> ()
   | x, y ->
     let arg_of_output_mode = function
       | Pretty_print -> assert false
@@ -1187,12 +1196,12 @@ let standalone_main () =
             exe_name fn;
           Caml.exit 2
     in
-    let input_name =
+    let input_name, relocate =
       match !loc_fname with
-      | None    -> fn
-      | Some fn -> fn
+      | None    -> fn, false
+      | Some fn -> fn, true
     in
-    process_file kind fn ~input_name ~output_mode:!output_mode ~output:!output
+    process_file kind fn ~input_name ~relocate ~output_mode:!output_mode ~output:!output
       ~embed_errors:!embed_errors
 ;;
 

@@ -57,7 +57,7 @@ module Context = struct
     | Pattern          , Pattern          -> Eq
     | Signature_item   , Signature_item   -> Eq
     | Structure_item   , Structure_item   -> Eq
-    | _ -> assert (Polymorphic_compare.(<>) (T a) (T b)); Ne
+    | _ -> assert (Poly.(<>) (T a) (T b)); Ne
 
   let get_extension : type a. a t -> a -> (extension * attributes) option = fun t x ->
     match t, x with
@@ -244,9 +244,9 @@ let rec filter_by_context
 
 let fail ctx (name, _) =
   if not (Name.Whitelisted.is_whitelisted ~kind:`Extension name.txt
-          || Name.Reserved_namespaces.is_in_reserved_namespaces name.txt) then
-  Name.Registrar.raise_errorf registrar (Context.T ctx)
-    "Extension `%s' was not translated" name
+          || Name.ignore_checks name.txt) then
+    Name.Registrar.raise_errorf registrar (Context.T ctx)
+      "Extension `%s' was not translated" name
 ;;
 
 let check_unused = object
