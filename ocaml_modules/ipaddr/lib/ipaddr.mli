@@ -19,8 +19,10 @@
 
     {e %%VERSION%% - {{:%%PKG_HOMEPAGE%% }homepage}} *)
 
-(** Raised when parsing of IP address syntax fails. *)
-exception Parse_error of string * string [@@deriving sexp]
+(** [Parse_error (err,packet)] is raised when parsing of the IP
+    address syntax fails. [err] contains a human-readable error
+    and [packet] is the original octet list that failed to parse. *)
+exception Parse_error of string * string
 
 (** Type of ordered address scope classifications *)
 type scope =
@@ -31,33 +33,45 @@ type scope =
 | Site
 | Organization
 | Global
-[@@deriving sexp]
+
+(** [string_of_scope scope] returns a human-readable representation
+  of {!scope}. *)
+val string_of_scope : scope -> string
+
+(** [scope_of_string s] returns a {!scope} from a string representation
+  of [s].  Valid string values for [s] can be obtained via {!string_of_scope}. *)
+val scope_of_string : string -> (scope, [> `Msg of string]) result
+
+(** [pp_scope fmt scope] outputs a human-readable representation
+  of {!scope} to the [fmt] formatter. *)
+val pp_scope : Format.formatter -> scope -> unit
 
 (** A collection of functions for IPv4 addresses. *)
 module V4 : sig
   (** Type of the internet protocol v4 address of a host *)
-  type t [@@deriving sexp]
+  type t
 
   (** Converts the low bytes of four int values into an abstract {! V4.t }. *)
   val make : int -> int -> int -> int -> t
 
   (** {3 Text string conversion} *)
 
-  (** [of_string_exn ipv4_string] is the address represented
-      by [ipv4_string]. Raises [Parse_error] if [ipv4_string] is not a
+  (** [of_string s] is the address {!t} represented by the IPv4 address [s].
+      Returns a human-readable error string if parsing failed. *)
+  val of_string : string -> (t, [> `Msg of string ]) result
+
+  (** [of_string_exn s] is the address {!t} represented
+      by [s]. Raises {!Parse_error} if [s] is not a
       valid representation of an IPv4 address. *)
   val of_string_exn : string -> t
 
-  (** Same as [of_string_exn] but returns an option type instead of raising
-      an exception. *)
-  val of_string : string -> t option
-
-  (** Same as [of_string_exn] but takes as an extra argument the offset
-      into the string for reading. *)
+  (** [of_string_raw s off] acts as {!of_string_exn} but takes as an extra
+      argument the offset into the string for reading. [off] will be
+      mutated to an unspecified value during the function call. *)
   val of_string_raw : string -> int ref -> t
 
   (** [to_string ipv4] is the dotted decimal string representation
-      of [ipv4], i.e. XXX.XX.X.XXX. *)
+      of [ipv4], i.e. [XXX.XX.X.XXX]. *)
   val to_string : t -> string
 
   (** [to_buffer buf ipv4] writes the string representation of [ipv4] into the
@@ -68,26 +82,20 @@ module V4 : sig
       the formatter [f]. *)
   val pp : Format.formatter -> t -> unit
 
-  (** [pp_hum f ipv4] outputs a human-readable representation of [ipv4] to
-      the formatter [f].
-      @deprecated This function will be deprecated in a future version of this
-      library. Please use pp instead. *)
-  val pp_hum : Format.formatter -> t -> unit
-  [@@ocaml.deprecated "Please use Ipaddr.V4.pp instead."]
-
   (** {3 Bytestring conversion} *)
+
+  (** [of_bytes s] is the address {!t} represented by the IPv4 octets
+      represented by [s].  [s] should be exactly 4 bytes long.
+      Returns a human-readable error string if parsing fails. *)
+  val of_bytes : string -> (t, [> `Msg of string ]) result
 
   (** [of_bytes_exn ipv4_octets] is the address represented
       by [ipv4_octets]. Raises [Parse_error] if [ipv4_octets] is not a
       valid representation of an IPv4 address. *)
   val of_bytes_exn : string -> t
 
-  (** Same as [of_bytes_exn] but returns an option type instead of raising
-      an exception. *)
-  val of_bytes : string -> t option
-
-  (** Same as [of_bytes_exn] but take an extra paramenter, the offset into
-      the bytes for reading. *)
+  (** [of_bytes_raw s off] is the same as {!of_bytes_exn} but takes
+      an extra paramenter [off] the offset into the bytes for reading. *)
   val of_bytes_raw : string -> int -> t
 
   (** [to_bytes ipv4] is a string of length 4 encoding [ipv4]. *)
@@ -148,10 +156,10 @@ module V4 : sig
 
   (** A module for manipulating IPv4 network prefixes. *)
   module Prefix : sig
-    type addr = t [@@deriving sexp]
+    type addr = t
 
     (** Type of a internet protocol subnet *)
-    type t [@@deriving sexp]
+    type t
 
     (** [mask n] is the pseudo-address of an [n] bit subnet mask. *)
     val mask : int -> addr
@@ -164,42 +172,37 @@ module V4 : sig
         See <http://tools.ietf.org/html/rfc4291#section-2.3>. *)
     val network_address : t -> addr -> addr
 
+    (** [of_string cidr] is the subnet prefix represented by the CIDR
+        string, [cidr]. Returns a human-readable parsing error message
+        if [cidr] is not a valid representation of a CIDR notation routing
+        prefix. *)
+    val of_string : string ->  (t, [> `Msg of string ]) result
+
     (** [of_string_exn cidr] is the subnet prefix represented by the CIDR
         string, [cidr]. Raises [Parse_error] if [cidr] is not a valid
         representation of a CIDR notation routing prefix. *)
     val of_string_exn : string -> t
 
-    (** Same as [of_string_exn] but returns an option type instead of raising
-        an exception. *)
-    val of_string : string -> t option
-
-    (** Same as [of_string_exn] but takes as an extra argument the offset
+    (** Same as {!of_string_exn} but takes as an extra argument the offset
         into the string for reading. *)
     val of_string_raw : string -> int ref -> t
 
     (** [to_string prefix] is the CIDR notation string representation
-        of [prefix], i.e. XXX.XX.X.XXX/XX. *)
+        of [prefix], i.e. [XXX.XX.X.XXX/XX]. *)
     val to_string : t -> string
 
     (** [pp f prefix] outputs a human-readable representation of [prefix]
         to the formatter [f]. *)
     val pp : Format.formatter -> t -> unit
 
-    (** [pp_hum f prefix] outputs a human-readable representation of [prefix]
-        to the formatter [f].
-        @deprecated This function will be deprecated in a future version of this
-        library. Please use pp instead. *)
-    val pp_hum : Format.formatter -> t -> unit
-    [@@ocaml.deprecated "Please use Ipaddr.V4.Prefix.pp instead."]
-
     (** [of_address_string_exn cidr_addr] is the address and prefix
         represented by [cidr_addr]. Raises [Parse_error] if [cidr_addr] is not
         a valid representation of a CIDR-scoped address. *)
     val of_address_string_exn : string -> t * addr
 
-    (** Same as [of_address_string_exn] but returns an option type instead of
+    (** Same as {!of_address_string_exn} but returns a result type instead of
         raising an exception. *)
-    val of_address_string : string -> (t * addr) option
+    val of_address_string : string -> (t * addr, [> `Msg of string ]) result
 
     (** [to_address_string prefix addr] is the network address
         constructed from [prefix] and [addr]. *)
@@ -294,7 +297,7 @@ end
 (** A collection of functions for IPv6 addresses. *)
 module V6 : sig
   (** Type of the internet protocol v6 address of a host *)
-  type t [@@deriving sexp]
+  type t
 
   (** Converts the low bytes of eight int values into an abstract
       {! V6.t }. *)
@@ -309,7 +312,7 @@ module V6 : sig
 
   (** Same as [of_string_exn] but returns an option type instead of raising
       an exception. *)
-  val of_string : string -> t option
+  val of_string : string -> (t, [> `Msg of string ]) result
 
   (** Same as [of_string_exn] but takes as an extra argument the offset into
       the string for reading. *)
@@ -317,22 +320,15 @@ module V6 : sig
 
   (** [to_string ipv6] is the string representation of [ipv6],
       i.e. XXX:XX:X::XXX:XX. *)
-  val to_string : ?v4:bool -> t -> string
+  val to_string : t -> string
 
   (** [to_buffer buf ipv6] writes the string representation of [ipv6] into the
       buffer [buf]. *)
-  val to_buffer : ?v4:bool -> Buffer.t -> t -> unit
+  val to_buffer : Buffer.t -> t -> unit
 
   (** [pp f ipv6] outputs a human-readable representation of [ipv6] to
       the formatter [f]. *)
   val pp : Format.formatter -> t -> unit
-
-  (** [pp_hum f ipv6] outputs a human-readable representation of [ipv6] to
-      the formatter [f].
-      @deprecated This function will be deprecated in a future version of this
-      library. Please use pp instead. *)
-  val pp_hum : Format.formatter -> t -> unit
-  [@@ocaml.deprecated "Please use Ipaddr.V6.pp instead."]
 
   (** {3 Bytestring conversion} *)
 
@@ -341,11 +337,11 @@ module V6 : sig
       valid representation of an IPv6 address. *)
   val of_bytes_exn : string -> t
 
-  (** Same as [of_bytes_exn] but returns an option type instead of raising
+  (** Same as {!of_bytes_exn} but returns an result type instead of raising
       an exception. *)
-  val of_bytes : string -> t option
+  val of_bytes : string -> (t, [> `Msg of string ]) result
 
-  (** Same as [of_bytes_exn] but takes an extra paramenter, the offset into
+  (** Same as {!of_bytes_exn} but takes an extra paramenter, the offset into
       the bytes for reading. *)
   val of_bytes_raw : string -> int -> t
 
@@ -360,17 +356,20 @@ module V6 : sig
 
   (** [of_int64 (ho, lo)] is the IPv6 address represented by two int64. *)
   val of_int64 : int64 * int64 -> t
+
   (** [to_int64 ipv6] is the 128-bit packed encoding of [ipv6]. *)
   val to_int64 : t -> int64 * int64
 
   (** [of_int32 (a, b, c, d)] is the IPv6 address represented by four int32. *)
   val of_int32 : int32 * int32 * int32 * int32 -> t
+
   (** [to_int32 ipv6] is the 128-bit packed encoding of [ipv6]. *)
   val to_int32 : t -> int32 * int32 * int32 * int32
 
   (** [of_int16 (a, b, c, d, e, f, g, h)] is the IPv6 address represented by
       eight 16-bit int. *)
   val of_int16 : int * int * int * int * int * int * int * int -> t
+
   (** [to_int16 ipv6] is the 128-bit packed encoding of [ipv6]. *)
   val to_int16 : t -> int * int * int * int * int * int * int * int
 
@@ -412,10 +411,10 @@ module V6 : sig
 
   (** A module for manipulating IPv6 network prefixes. *)
   module Prefix : sig
-    type addr = t [@@deriving sexp]
+    type addr = t
 
     (** Type of a internet protocol subnet *)
-    type t [@@deriving sexp]
+    type t
 
     (** [mask n] is the pseudo-address of an [n] bit subnet mask. *)
     val mask : int -> addr
@@ -433,11 +432,11 @@ module V6 : sig
         representation of a CIDR notation routing prefix. *)
     val of_string_exn : string -> t
 
-    (** Same as [of_string_exn] but returns an option type instead of raising
+    (** Same as {!of_string_exn} but returns a result type instead of raising
         an exception. *)
-    val of_string : string -> t option
+    val of_string : string -> (t, [> `Msg of string ]) result
 
-    (** Same as [of_string_exn] but takes as an extra argument the offset
+    (** Same as {!of_string_exn} but takes as an extra argument the offset
         into the string for reading. *)
     val of_string_raw : string -> int ref -> t
 
@@ -449,21 +448,14 @@ module V6 : sig
         to the formatter [f]. *)
     val pp : Format.formatter -> t -> unit
 
-    (** [pp_hum f prefix] outputs a human-readable representation of [prefix]
-        to the formatter [f].
-        @deprecated This function will be deprecated in a future version of this
-        library. Please use pp instead. *)
-    val pp_hum : Format.formatter -> t -> unit
-    [@@ocaml.deprecated "Please use Ipaddr.V6.Prefix.pp instead."]
-
     (** [of_address_string_exn cidr_addr] is the address and prefix
         represented by [cidr_addr]. Raises [Parse_error] if [cidr_addr] is not
         a valid representation of a CIDR-scoped address. *)
     val of_address_string_exn : string -> t * addr
 
-    (** Same as [of_address_string_exn] but returns an option type instead of
+    (** Same as {!of_address_string_exn} but returns an option type instead of
         raising an exception. *)
-    val of_address_string : string -> (t * addr) option
+    val of_address_string : string -> ((t * addr), [> `Msg of string]) result
 
     (** [to_address_string prefix addr] is the network address
         constructed from [prefix] and [addr]. *)
@@ -553,10 +545,10 @@ module V6 : sig
 end
 
 (** Type of either an IPv4 value or an IPv6 value *)
-type ('v4,'v6) v4v6 = V4 of 'v4 | V6 of 'v6 [@@deriving sexp]
+type ('v4,'v6) v4v6 = V4 of 'v4 | V6 of 'v6
 
 (** Type of any IP address *)
-type t = (V4.t,V6.t) v4v6 [@@deriving sexp]
+type t = (V4.t,V6.t) v4v6
 
 (** [to_string addr] is the text string representation of [addr]. *)
 val to_string : t -> string
@@ -569,21 +561,14 @@ val to_buffer : Buffer.t -> t -> unit
     formatter [f]. *)
 val pp : Format.formatter -> t -> unit
 
-(** [pp_hum f ip] outputs a human-readable representation of [ip] to the
-    formatter [f].
-    @deprecated This function will be deprecated in a future version of this
-    library. Please use pp instead. *)
-val pp_hum : Format.formatter -> t -> unit
-[@@ocaml.deprecated "Please use Ipaddr.pp instead."]
-
 (** [of_string_exn s] parses [s] as an IPv4 or IPv6 address.
-    Raises [Parse_error] if [s] is not a valid string representation of an IP
+    Raises {!Parse_error} if [s] is not a valid string representation of an IP
     address. *)
 val of_string_exn : string -> t
 
-(** Same as [of_string_exn] but returns an option type instead of raising an
+(** Same as {!of_string_exn} but returns a result type instead of raising an
     exception. *)
-val of_string : string -> t option
+val of_string : string -> (t, [> `Msg of string ]) result
 
 (** Same as [of_string_exn] but takes as an extra argument the offset into
     the string for reading. *)
@@ -628,10 +613,10 @@ val multicast_to_mac : t -> Macaddr.t
 val to_domain_name : t -> string list
 
 module Prefix : sig
-  type addr = t [@@deriving sexp]
+  type addr = t
 
   (** Type of a internet protocol subnet *)
-  type t = (V4.Prefix.t, V6.Prefix.t) v4v6 [@@deriving sexp]
+  type t = (V4.Prefix.t, V6.Prefix.t) v4v6
 
   (** [to_string subnet] is the text string representation of [subnet]. *)
   val to_string : t -> string
@@ -644,23 +629,16 @@ module Prefix : sig
       to the formatter [f]. *)
   val pp : Format.formatter -> t -> unit
 
-  (** [pp_hum f subnet] outputs a human-readable representation of [subnet]
-      to the formatter [f].
-      @deprecated This function will be deprecated in a future version of this
-      library. Please use pp instead. *)
-  val pp_hum : Format.formatter -> t -> unit
-  [@@ocaml.deprecated "Please use Ipaddr.Prefix.pp instead."]
-
   (** [of_string_exn cidr] is the subnet prefix represented by the CIDR
       string, [cidr]. Raises [Parse_error] if [cidr] is not a valid
       representation of a CIDR notation routing prefix. *)
   val of_string_exn : string -> t
 
-  (** Same as [of_string_exn] but returns an option type instead of raising
+  (** Same as {!of_string_exn} but returns a result type instead of raising
       an exception. *)
-  val of_string     : string -> t option
+  val of_string : string -> (t, [> `Msg of string]) result
 
-  (** Same as [of_string_exn] but takes as an extra argument the offset
+  (** Same as {!of_string_exn} but takes as an extra argument the offset
       into the string for reading. *)
   val of_string_raw : string -> int ref -> t
 

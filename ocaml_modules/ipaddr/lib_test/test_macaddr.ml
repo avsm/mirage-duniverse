@@ -27,10 +27,15 @@ let test_string_rt () =
     let os = of_string_exn addr in
     let ts = to_string ~sep os in
     assert_equal ~msg:(addr ^ " <> " ^ ts) ts addr;
-    let os = t_of_sexp (sexp_of_t os) in
+    let os = Macaddr_sexp.(t_of_sexp (sexp_of_t os)) in
     let ts = to_string ~sep os in
     assert_equal ~msg:(addr ^ " <> " ^ ts) ts addr;
   ) addrs
+
+let assert_result_failure ~msg a =
+  match a with
+  | Ok _ -> assert_failure msg
+  | Error (`Msg _) -> ()
 
 let test_string_rt_bad () =
   let addrs = [
@@ -41,7 +46,7 @@ let test_string_rt_bad () =
     "ca:fe:ba:be:e:eee";
     "ca:fe:ba:be:ee-ee";
   ] in
-  List.iter (fun addr -> assert_equal ~msg:addr (of_string addr) None) addrs
+  List.iter (fun addr -> assert_result_failure ~msg:addr (of_string addr)) addrs
 
 let test_bytes_rt () =
   let addr = "\254\099\003\128\000\000" in
@@ -53,7 +58,7 @@ let test_bytes_rt_bad () =
     "\254\099\003\128\000\000\233";
   ] in
   List.iter (fun addr ->
-    assert_equal ~msg:(String.escaped addr) (of_bytes addr) None) addrs
+    assert_result_failure ~msg:(String.escaped addr) (of_bytes addr)) addrs
 
 let test_make_local () =
   let () = Random.self_init () in

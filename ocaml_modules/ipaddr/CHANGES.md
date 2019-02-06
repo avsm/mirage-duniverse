@@ -1,3 +1,61 @@
+## 3.0.0 (2019-01-02)
+
+This release features several backwards incompatible changes,
+but ones that should increase the portability and robustness
+of the library.
+
+* Remove the sexp serialisers from the main interface in favour
+  of `pp` functions.  Use the `Ipaddr_sexp` module if you still
+  need a sexp serialiser.
+
+  To use these with ppx-based derivers, simply replace the
+  reference to the `Ipaddr` type definition with `Ipaddr_sexp`.
+  That will import the sexp-conversion functions, and the actual
+  type definitions are simply aliases to the corresponding type
+  within `Ipaddr`.  For example, you might do:
+
+  ```
+  type t = {
+    ip: Ipaddr_sexp.t;
+    mac: Macaddr_sexp.t;
+  } [@@deriving sexp]
+  ```
+
+  The actual types of the records will be aliases to the main
+  library types, and there will be two new functions available
+  as converters.  The signature after ppx has run will be:
+
+  ```
+  type t = {
+    ip: Ipaddr.t;
+    mac: Macaddr.t;
+  }
+  val sexp_of_t : t -> Sexplib0.t
+  val t_of_sexp : Sexplib0.t -> t
+  ```
+
+* Break out the `Macaddr` module into a separate opam package so
+  that the `Ipaddr` module can be wrapped.  Use the `macaddr`
+  opam library now if you need just the MAC address functionality.
+
+* Replace all the `of_string/bytes` functions that formerly returned
+  option types with the `Rresult` result types instead. This stops
+  the cause of the exception from being swallowed, and the error
+  message in the new functions can be displayed usefully.
+
+* In the `Ipaddr.V6.to_string` and `to_buffer` functions, remove the
+  optional labelled argument `v4` and always output v4-mapped strings
+  as recommended by RFC5952. (#80 by @hannesm).
+
+* Remove `pp_hum` which was deprecated in 2.9.0.
+
+* Sexplib0 is now used which is more lightweight tha the full
+  Sexplib library. Minimum OCaml version is now 4.04.0+ as a result
+  of this dependency.
+
+* Improvements to the ocamldoc formatting strings for better
+  layout and odoc compatibility.
+
 ## 2.9.0 (2018-12-11)
 
 * Add `pp` functions for prettyprinting and deprecate `pp_hum` variants.

@@ -15,9 +15,7 @@
  *
  *)
 
-open Sexplib.Std
-
-exception Parse_error of string * string [@@deriving sexp]
+exception Parse_error of string * string
 
 type scope =
 | Point
@@ -27,7 +25,32 @@ type scope =
 | Site
 | Organization
 | Global
-[@@deriving sexp]
+
+let try_with_result fn a =
+  try Ok (fn a)
+  with Parse_error (msg, _) -> Error (`Msg ("Ipaddr: " ^ msg))
+
+let string_of_scope = function
+| Point -> "point"
+| Interface -> "interface"
+| Link -> "link"
+| Admin -> "admin"
+| Site -> "site"
+| Organization -> "organization"
+| Global -> "global"
+
+let scope_of_string = function
+| "point" -> Ok Point
+| "interface" -> Ok Interface
+| "link" -> Ok Link
+| "admin" -> Ok Admin
+| "site" -> Ok Site
+| "organization" -> Ok Organization
+| "global" -> Ok Global
+| s -> Error (`Msg ("unknown scope: " ^ s))
+
+let pp_scope fmt s =
+  Format.pp_print_string fmt (string_of_scope s)
 
 let (~|) = Int32.of_int
 let (|~) = Int32.to_int
@@ -147,7 +170,8 @@ module V4 = struct
     let x = of_string_raw s o in
     expect_end s o;
     x
-  let of_string s = try Some (of_string_exn s) with _ -> None
+
+  let of_string s = try_with_result of_string_exn s
 
   let to_buffer b i =
     Printf.bprintf b "%ld.%ld.%ld.%ld" (i >! 24) (i >! 16) (i >! 8) (i >! 0)
@@ -159,16 +183,6 @@ module V4 = struct
 
   let pp ppf i =
     Format.fprintf ppf "%s" (to_string i)
-
-  let pp_hum = pp
-
-  let sexp_of_t i =
-    Sexplib.Sexp.Atom (to_string i)
-
-  let t_of_sexp i =
-    match i with
-    | Sexplib.Sexp.Atom i -> of_string_exn i
-    | _ -> raise (Failure "Ipaddr.V4.t: Unexpected non-atom in sexp")
 
   (* Byte conversion *)
 
@@ -185,7 +199,7 @@ module V4 = struct
     if len < 4 then raise (need_more bs);
     of_bytes_raw bs 0
 
-  let of_bytes bs = try Some (of_bytes_exn bs) with _ -> None
+  let of_bytes bs = try_with_result of_bytes_exn bs
 
   let to_bytes_raw i b o =
     Bytes.set b (0 + o) (Char.chr ((|~) (i >! 24)));
@@ -206,8 +220,8 @@ module V4 = struct
   let of_int16 (a,b) = (~| a <|< 16) ||| (~| b)
   let to_int16 a = ((|~) (a >|> 16), (|~) (a &&& 0xFF_FF_l))
 
-  (** MAC *)
-  (** {{:http://tools.ietf.org/html/rfc1112#section-6.2}RFC 1112}. *)
+  (* MAC *)
+  (* {{:http://tools.ietf.org/html/rfc1112#section-6.2}RFC 1112}. *)
   let multicast_to_mac i =
     let macb = Bytes.create 6 in
     Bytes.set macb 0 (Char.chr 0x01);
@@ -239,8 +253,8 @@ module V4 = struct
   let routers     = make 224   0   0   2
 
   module Prefix = struct
-    type addr = t [@@deriving sexp]
-    type t = addr * int [@@deriving sexp]
+    type addr = t
+    type t = addr * int
 
     let compare (pre,sz) (pre',sz') =
       let c = compare pre pre' in
@@ -280,12 +294,12 @@ module V4 = struct
 
     let of_string_exn s = let (p,quad) = _of_string_exn s in make p quad
 
-    let of_string s = try Some (of_string_exn s) with _ -> None
+    let of_string s = try_with_result of_string_exn s
 
     let of_address_string_exn s =
       let (p,quad) = _of_string_exn s in (make p quad, quad)
 
-    let of_address_string s = try Some (of_address_string_exn s) with _ -> None
+    let of_address_string s = try_with_result of_address_string_exn s
 
     let of_netmask nm addr =
       let rec find_greatest_one bits i =
@@ -306,8 +320,6 @@ module V4 = struct
 
     let pp ppf i =
       Format.fprintf ppf "%s" (to_string i)
-
-    let pp_hum = pp
 
     let to_address_buffer buf ((_,sz) as subnet) addr =
       to_buffer buf (network_address subnet addr,sz)
@@ -547,16 +559,16 @@ module V6 = struct
     expect_end s o;
     x
 
-  let of_string s = try Some (of_string_exn s) with _ -> None
+  let of_string s = try_with_result of_string_exn s
 
   (* http://tools.ietf.org/html/rfc5952 *)
-  let to_buffer ?(v4=false) buf addr =
+  let to_buffer buf addr =
 
     let (a,b,c,d,e,f,g,h) as comp = to_int16 addr in
 
     let v4 = match comp with
       | (0,0,0,0,0,0xffff,_,_) -> true
-      | _ -> v4
+      | _ -> false
     in
 
     let rec loop elide zeros acc = function
@@ -595,23 +607,13 @@ module V6 = struct
       | [] -> ()
     in fill (List.rev lrev)
 
-  let to_string ?v4 l =
+  let to_string l =
     let buf = Buffer.create 39 in
-    to_buffer ?v4 buf l;
+    to_buffer buf l;
     Buffer.contents buf
 
   let pp ppf i =
     Format.fprintf ppf "%s" (to_string i)
-
-  let pp_hum = pp
-
-  let sexp_of_t i =
-    Sexplib.Sexp.Atom (to_string i)
-
-  let t_of_sexp i =
-    match i with
-    | Sexplib.Sexp.Atom i -> of_string_exn i
-    | _ -> raise (Failure "Ipaddr.V6.t: Unexpected non-atom in sexp")
 
   (* byte conversion *)
 
@@ -628,14 +630,15 @@ module V6 = struct
     if len < 16 then raise (need_more bs);
     of_bytes_raw bs 0
 
-  let of_bytes bs = try Some (of_bytes_exn bs) with _ -> None
+  let of_bytes bs = try_with_result of_bytes_exn bs
+
   let to_bytes i =
     let bs = Bytes.create 16 in
     to_bytes_raw i bs 0;
     Bytes.to_string bs
 
-  (** MAC *)
-  (** {{:https://tools.ietf.org/html/rfc2464#section-7}RFC 2464}. *)
+  (* MAC *)
+  (* {{:https://tools.ietf.org/html/rfc2464#section-7}RFC 2464}. *)
   let multicast_to_mac i =
     let (_,_,_,i) = to_int32 i in
     let macb = Bytes.create 6 in
@@ -697,8 +700,8 @@ module V6 = struct
   let site_routers      = make 0xff05 0 0 0 0 0 0 2
 
   module Prefix = struct
-    type addr = t [@@deriving sexp]
-    type t = addr * int [@@deriving sexp]
+    type addr = t
+    type t = addr * int
 
     let compare (pre,sz) (pre',sz') =
       let c = compare pre pre' in
@@ -741,12 +744,12 @@ module V6 = struct
 
     let of_string_exn s = let (p,v6) = _of_string_exn s in make p v6
 
-    let of_string s = try Some (of_string_exn s) with _ -> None
+    let of_string s = try_with_result of_string_exn s
 
     let of_address_string_exn s =
       let (p,v6) = _of_string_exn s in (make p v6, v6)
 
-    let of_address_string s = try Some (of_address_string_exn s) with _ -> None
+    let of_address_string s = try_with_result of_address_string_exn s
 
     let of_netmask nm addr =
       make (match nm with
@@ -759,7 +762,7 @@ module V6 = struct
       ) addr
 
     let to_buffer buf (pre,sz) =
-      Printf.bprintf buf "%a/%d" (to_buffer ~v4:false) pre sz
+      Printf.bprintf buf "%a/%d" to_buffer pre sz
 
     let to_string subnet =
       let buf = Buffer.create 43 in
@@ -768,8 +771,6 @@ module V6 = struct
 
     let pp ppf i =
       Format.fprintf ppf "%s" (to_string i)
-
-    let pp_hum = pp
 
     let to_address_buffer buf ((_,sz) as subnet) addr =
       to_buffer buf (network_address subnet addr,sz)
@@ -843,8 +844,8 @@ module V6 = struct
   let is_private i = (scope i) <> Global
 end
 
-type ('v4,'v6) v4v6 = V4 of 'v4 | V6 of 'v6 [@@deriving sexp]
-type t = (V4.t,V6.t) v4v6 [@@deriving sexp]
+type ('v4,'v6) v4v6 = V4 of 'v4 | V6 of 'v6
+type t = (V4.t,V6.t) v4v6
 
 let compare a b = match a,b with
   | V4 a, V4 b -> V4.compare a b
@@ -862,8 +863,6 @@ let to_buffer buf = function
 
 let pp ppf i =
       Format.fprintf ppf "%s" (to_string i)
-
-let pp_hum = pp
 
 let of_string_raw s offset =
   let len = String.length s in
@@ -884,7 +883,7 @@ let of_string_raw s offset =
 
 let of_string_exn s = of_string_raw s (ref 0)
 
-let of_string s = try Some (of_string_exn s) with _ -> None
+let of_string s = try_with_result of_string_exn s
 
 let v6_of_v4 v4 =
   V6.(Prefix.(network_address ipv4_mapped (of_int32 (0l,0l,0l,v4))))
@@ -925,8 +924,8 @@ module Prefix = struct
     let to_v6 = to_v6
   end
 
-  type addr = t [@@deriving sexp]
-  type t = (V4.Prefix.t,V6.Prefix.t) v4v6 [@@deriving sexp]
+  type addr = t
+  type t = (V4.Prefix.t,V6.Prefix.t) v4v6
 
   let compare a b = match a,b with
     | V4 a , V4 b -> V4.Prefix.compare a b
@@ -953,7 +952,7 @@ module Prefix = struct
 
   let of_string_exn s = of_string_raw s (ref 0)
 
-  let of_string s = try Some (of_string_exn s) with _ -> None
+  let of_string s = try_with_result of_string_exn s
 
   let v6_of_v4 v4 = V6.Prefix.make
     (96 + V4.Prefix.bits v4)
@@ -994,6 +993,4 @@ module Prefix = struct
 
   let pp ppf i =
     Format.fprintf ppf "%s" (to_string i)
-
-  let pp_hum = pp
 end
