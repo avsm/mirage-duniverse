@@ -1,12 +1,21 @@
+v2.2.0 2019-01-31
+-----------------
+
+* Add `Uri.pp` as an alias to `Uri.pp_hum`, as the `pp` form
+  is more commonly used. (#133 @avsm)
+* Add an `[@@ocaml.toplevel_printer]` attribute to Uri.pp
+  so that it will be automatically loaded on modern Utop versions. (#133 @avsm)
+* Upgrade last remaining `jbuild` file to `dune` (#133 @avsm)
+* OCamldoc improvements in section headers (@avsm)
+
 v2.1.0 2018-12-12
 -----------------
 
 * Expose a `compare` function in `Uri_sexp` so that it will work
-  with `deriving compare,sexp` (#127 @avsm).
-* `uri.top` now depends on compiler-libs, not compiler-libs.toplevel (#130 @yallop)
-* Upgrade the opam metadata to the 2.0 format (@avsm).
-* Update Travis to test OCaml 4.04->4.07 (@avsm @mseri #131).
-* Minimum OCaml version is now 4.04.0+ due to sexplib0 dependency (@avsm).
+  with `deriving compare,sexp`.
+* Upgrade the opam metadata to the 2.0 format.
+* Update Travis to test OCaml 4.03->4.07.
+* Minimum OCaml version is now 4.04.0+ due to sexplib0 dependency.
 
 v2.0.0 2018-10-15
 -----------------
@@ -21,6 +30,7 @@ v2.0.0 2018-10-15
 * Switch to using sexplib0 instead of sexplib for easier dependencies
   (based on #123 by @mseri)
 * Port build to Dune from jbuilder.
+* Add benchmarks using `core_bench` (#125 via @drup)
 
 v1.9.7 2018-07-01
 -----------------
