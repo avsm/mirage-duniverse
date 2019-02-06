@@ -1,4 +1,5 @@
 (library
   (name lru)
+  (public_name lru)
   (synopsis "scalable LRU caches")
   (libraries psq))
