@@ -1,3 +1,15 @@
+## 2.1.0 (2019-02-03)
+
+* Upgrade opam metadata to 2.0 format (@avsm)
+* Port build from jbuilder to Dune (@avsm)
+* Test on OCaml 4.07 (@avsm)
+* Remove topkg metadata in favour of dune-release (@avsm)
+
+## 2.0.1 (2018-08-01)
+
+* Improved efficiency of unmarshalling code
+* Use modern `ppx_cstruct` dependency for build.
+
 ## 2.0.0 (2017-12-06):
 * Fix build with OCaml 4.04 (and `-safe-string`)
 * Remove unnecessary dependency on `ocamlfind` and make `ounit` a test
