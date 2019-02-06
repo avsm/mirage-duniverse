@@ -1,0 +1,6 @@
+(library
+ (name nocrypto_entropy_mirage)
+ (public_name nocrypto.mirage)
+ (libraries nocrypto lwt mirage-entropy)
+ (optional)
+)

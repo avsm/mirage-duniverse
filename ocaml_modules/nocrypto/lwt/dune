@@ -1,0 +1,6 @@
+(library
+ (name nocrypto_entropy_lwt)
+ (public_name nocrypto.lwt)
+ (libraries nocrypto lwt.unix nocrypto_entropy_unix cstruct-lwt)
+ (optional)
+)

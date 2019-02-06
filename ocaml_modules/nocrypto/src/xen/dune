@@ -1,0 +1,13 @@
+(copy_files ../native/*)
+
+(library
+ (name nocrypto_xen)
+ (public_name nocrypto.xen)
+ (optional)
+ (libraries mirage-xen)
+ (c_flags (:include ../cflags.sexp) (:include cflags-freestanding.sexp))
+ (c_names misc stubs md5 sha1 sha256 sha512 aes_generic
+          aes_aesni des_generic ghash_pclmul ghash_generic)
+)
+
+(rule (with-stdout-to cflags-freestanding.sexp (run ./cflags.sh)))

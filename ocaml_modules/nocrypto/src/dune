@@ -1,0 +1,15 @@
+(copy_files native/*)
+
+(library
+ (public_name nocrypto)
+ (libraries cstruct ocplib-endian sexplib zarith)
+ (preprocess (pps ppx_sexp_conv))
+ (c_names misc stubs md5 sha1 sha256 sha512 aes_generic
+          aes_aesni des_generic ghash_pclmul ghash_generic)
+ (c_flags (:include cflags.sexp))
+)
+
+(rule
+ (targets cflags.sexp)
+ (deps (env_var NOCRYPTO_ACCELERATE))
+ (action (run ./discover/discover.exe --output %{targets})))
