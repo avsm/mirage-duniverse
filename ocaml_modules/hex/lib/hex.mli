@@ -45,6 +45,18 @@ val to_string: t -> string
 (** [to_string t] is the binary string [s] such that [of_string s] is
     [t]. *)
 
+(** {1:byte Bytes} *)
+
+val of_bytes: ?ignore:char list -> bytes -> t
+(** [of_bytes s] is the hexadecimal representation of the binary
+    string [s]. If [ignore] is set, skip the characters in the list
+    when converting. Eg [of_bytes ~ignore:[' '] "a f"]. The default
+    value of [ignore] is [[]]). *)
+
+val to_bytes: t -> bytes
+(** [to_bytes t] is the binary string [s] such that [of_bytes s] is
+    [t]. *)
+
 (** {1:cstruct Cstruct} *)
 
 val of_cstruct: ?ignore:char list -> Cstruct.t -> t
@@ -53,6 +65,16 @@ val of_cstruct: ?ignore:char list -> Cstruct.t -> t
 
 val to_cstruct: t -> Cstruct.t
 (** [to_cstruct t] is the buffer [b] such that [of_cstruct b] is
+    [t]. *)
+
+(** {1:Bigstring Bigstring} *)
+
+val of_bigstring: ?ignore:char list -> Cstruct.buffer -> t
+(** [of_bigstring buf] is the hexadecimal representation of the buffer
+    [buf]. *)
+
+val to_bigstring: t -> Cstruct.buffer
+(** [to_bigstring t] is the buffer [b] such that [of_bigstring b] is
     [t]. *)
 
 (** {1 Debugging} *)
@@ -78,5 +100,10 @@ val hexdump_s: ?print_row_numbers:bool -> ?print_chars:bool -> t -> string
 
 (** {1 Pretty printing} *)
 
-val pp : Format.formatter -> t -> unit
+val pp : Format.formatter -> t -> unit [@@ocaml.toplevel_printer]
+(** [pp fmt t] will output a human-readable hex representation of [t]
+    to the formatter [fmt]. *)
+
 val show : t -> string
+(** [show t] will return a human-readable hex representation of [t] as
+    a string. *)
