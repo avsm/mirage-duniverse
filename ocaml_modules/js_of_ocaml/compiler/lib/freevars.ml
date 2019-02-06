@@ -17,30 +17,30 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  *)
+open Stdlib
 
-
-let times = Option.Debug.find "times"
+let times = Debug.find "times"
 
 open Code
 
 (****)
 
-let iter_cont_free_vars f (_, l) = List.iter f l
+let iter_cont_free_vars f (_, l) = List.iter ~f l
 
 let iter_expr_free_vars f e =
   match e with
     Const _ | Constant _ ->
       ()
   | Apply (x, l, _) ->
-      f x; List.iter f l
+      f x; List.iter ~f l
   | Block (_, a) ->
-      Array.iter f a
+      Array.iter ~f a
   | Field (x, _) ->
       f x
   | Closure _ ->
       ()
   | Prim (_, l) ->
-      List.iter (fun x -> match x with Pv x -> f x | Pc _ -> ()) l
+      List.iter l ~f:(fun x -> match x with Pv x -> f x | Pc _ -> ())
 
 let iter_instr_free_vars f i =
   match i with
@@ -62,13 +62,13 @@ let iter_last_free_var f l =
       f x; iter_cont_free_vars f cont1; iter_cont_free_vars f cont2
   | Switch (x, a1, a2) ->
       f x;
-      Array.iter (fun c -> iter_cont_free_vars f c) a1;
-      Array.iter (fun c -> iter_cont_free_vars f c) a2
+      Array.iter a1 ~f:(fun c -> iter_cont_free_vars f c);
+      Array.iter a2 ~f:(fun c -> iter_cont_free_vars f c)
   | Pushtrap (cont1, _, cont2, _) ->
       iter_cont_free_vars f cont1; iter_cont_free_vars f cont2
 
 let iter_block_free_vars f block =
-  List.iter (fun i -> iter_instr_free_vars f i) block.body;
+  List.iter block.body ~f:(fun i -> iter_instr_free_vars f i);
   iter_last_free_var f block.branch
 
 let iter_instr_bound_vars f i =
@@ -86,8 +86,8 @@ let iter_last_bound_vars f l =
       f x
 
 let iter_block_bound_vars f block =
-  List.iter f block.params;
-  List.iter (fun i -> iter_instr_bound_vars f i) block.body;
+  List.iter ~f block.params;
+  List.iter block.body ~f:(fun i -> iter_instr_bound_vars f i);
   iter_last_bound_vars f block.branch
 
 (****)
@@ -95,23 +95,23 @@ let iter_block_bound_vars f block =
 type st = { index : int; mutable lowlink : int; mutable in_stack : bool }
 
 let find_loops ((_, blocks, _) as prog) =
-  let in_loop = ref AddrMap.empty in
+  let in_loop = ref Addr.Map.empty in
   let index = ref 0 in
-  let state = ref AddrMap.empty in
+  let state = ref Addr.Map.empty in
   let stack = Stack.create () in
   let rec traverse pc =
     let st = {index = !index; lowlink = !index; in_stack = true } in
-    state := AddrMap.add pc st !state;
+    state := Addr.Map.add pc st !state;
     incr index;
     Stack.push pc stack;
     Code.fold_children blocks pc
       (fun pc' () ->
          try
-           let st' = AddrMap.find pc' !state in
+           let st' = Addr.Map.find pc' !state in
            if st'.in_stack then st.lowlink <- min st.lowlink st'.index
          with Not_found ->
            traverse pc';
-           let st' = AddrMap.find pc' !state in
+           let st' = Addr.Map.find pc' !state in
            st.lowlink <- min st.lowlink st'.lowlink)
       ();
     if st.index = st.lowlink then begin
@@ -119,37 +119,36 @@ let find_loops ((_, blocks, _) as prog) =
       while
         let pc' = Stack.pop stack in
         l := pc' :: !l;
-        (AddrMap.find pc' !state).in_stack <- false;
+        (Addr.Map.find pc' !state).in_stack <- false;
         pc' <> pc
       do () done;
       if List.length !l > 1 then
-        List.iter (fun pc' -> in_loop := AddrMap.add pc' pc !in_loop) !l
+        List.iter !l ~f:(fun pc' -> in_loop := Addr.Map.add pc' pc !in_loop)
     end
   in
   Code.fold_closures prog (fun _ _ (pc, _) () -> traverse pc) ();
   !in_loop
 
 let mark_variables in_loop (pc, blocks, free_pc) =
-  let vars = VarTbl.make () (-1) in
+  let vars = Var.Tbl.make () (-1) in
   let visited = Array.make free_pc false in
   let rec traverse pc =
     if not visited.(pc) then begin
       visited.(pc) <- true;
-      let block = AddrMap.find pc blocks in
+      let block = Addr.Map.find pc blocks in
       begin try
-        let pc' = AddrMap.find pc in_loop in
+        let pc' = Addr.Map.find pc in_loop in
         iter_block_bound_vars (fun x ->
 (*
 Format.eprintf "!%a: %d@." Var.print x pc';
 *)
- VarTbl.set vars x pc') block
+ Var.Tbl.set vars x pc') block
       with Not_found -> () end;
-      List.iter
-        (fun i ->
-           match i with
-             Let (_, Closure (_, (pc', _))) -> traverse pc'
-           | _                              -> ())
-        block.body;
+      List.iter block.body
+        ~f:(fun i ->
+          match i with
+          | Let (_, Closure (_, (pc', _))) -> traverse pc'
+          | _                              -> ());
       Code.fold_children blocks pc (fun pc' () -> traverse pc') ()
     end
   in
@@ -157,63 +156,61 @@ Format.eprintf "!%a: %d@." Var.print x pc';
   vars
 
 let free_variables vars in_loop (pc, blocks, free_pc) =
-  let all_freevars = ref AddrMap.empty in
-  let freevars = ref AddrMap.empty in
+  let all_freevars = ref Addr.Map.empty in
+  let freevars = ref Addr.Map.empty in
   let visited = Array.make free_pc false in
   let rec traverse pc =
     if not visited.(pc) then begin
       visited.(pc) <- true;
-      let block = AddrMap.find pc blocks in
+      let block = Addr.Map.find pc blocks in
       iter_block_free_vars
         (fun x ->
-           let pc' = VarTbl.get vars x in
+           let pc' = Var.Tbl.get vars x in
 (*
 Format.eprintf "%a: %d@." Var.print x pc';
 *)
            if pc' <> -1 then begin
              let fv =
-               try AddrMap.find pc' !all_freevars with Not_found -> VarSet.empty in
-             let s = VarSet.add x fv in
-             all_freevars := AddrMap.add pc' s !all_freevars
+               try Addr.Map.find pc' !all_freevars with Not_found -> Var.Set.empty in
+             let s = Var.Set.add x fv in
+             all_freevars := Addr.Map.add pc' s !all_freevars
            end)
         block;
       begin try
-        let pc'' = AddrMap.find pc in_loop in
-        all_freevars := AddrMap.remove pc'' !all_freevars
+        let pc'' = Addr.Map.find pc in_loop in
+        all_freevars := Addr.Map.remove pc'' !all_freevars
       with Not_found -> () end;
-      List.iter
-        (fun i ->
-           match i with
-             Let (_, Closure (_, (pc', _))) ->
-               traverse pc';
-               begin try
-                 let pc'' = AddrMap.find pc in_loop in
-                 let fv =
-                   try AddrMap.find pc'' !all_freevars with Not_found -> VarSet.empty in
-                 freevars := AddrMap.add pc' fv !freevars;
-                 all_freevars := AddrMap.remove pc'' !all_freevars
-               with Not_found ->
-                 freevars := AddrMap.add pc' VarSet.empty !freevars;
-               end
-           | _ -> ())
-        block.body;
+      List.iter block.body ~f:(fun i ->
+        match i with
+          Let (_, Closure (_, (pc', _))) ->
+          traverse pc';
+          begin try
+              let pc'' = Addr.Map.find pc in_loop in
+              let fv =
+                try Addr.Map.find pc'' !all_freevars with Not_found -> Var.Set.empty in
+              freevars := Addr.Map.add pc' fv !freevars;
+              all_freevars := Addr.Map.remove pc'' !all_freevars
+            with Not_found ->
+              freevars := Addr.Map.add pc' Var.Set.empty !freevars;
+          end
+        | _ -> ());
       Code.fold_children blocks pc (fun pc' () -> traverse pc') ()
     end
   in
    traverse pc;
 (*
-AddrMap.iter
-(fun pc fv -> if VarSet.cardinal fv > 0 then
-Format.eprintf ">> %d: %d@." pc (VarSet.cardinal fv))
+Addr.Map.iter
+(fun pc fv -> if Var.Set.cardinal fv > 0 then
+Format.eprintf ">> %d: %d@." pc (Var.Set.cardinal fv))
 !freevars;
 *)
   !freevars
 
 let f p =
   Code.invariant p;
-  let t = Util.Timer.make () in
+  let t = Timer.make () in
   let in_loop = find_loops p in
   let vars = mark_variables in_loop p in
   let free_vars = free_variables vars in_loop p in
-  if times () then Format.eprintf "  free vars: %a@." Util.Timer.print t;
+  if times () then Format.eprintf "  free vars: %a@." Timer.print t;
   free_vars

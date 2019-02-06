@@ -17,7 +17,7 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  *)
 
-module Primitive = Jsoo_primitive
+open Stdlib
 open Code
 open Flow
 
@@ -117,7 +117,7 @@ let eval_prim x =
      | "caml_sqrt_float",_ -> float_unop l sqrt
      | "caml_tan_float",_ -> float_unop l tan
      | ("caml_string_get"|"caml_string_unsafe_get"), [(String s|IString s); Int pos] ->
-        if Option.Optim.safe_string () && String.length s > Int.to_int pos
+        if Config.Flag.safe_string () && String.length s > Int.to_int pos
         then Some (Int (Int.of_int (Char.code (String.get s (Int.to_int pos)))))
         else None
      | "caml_string_equal", [String s1; String s2] ->
@@ -222,22 +222,23 @@ let eval_instr info i =
       end
     | Let (x,Prim (prim, prim_args)) ->
       begin
-        let prim_args' = List.map (fun x -> the_const_of info x) prim_args in
+        let prim_args' = List.map prim_args ~f:(fun x -> the_const_of info x) in
         let res =
-          if List.for_all (function Some _ -> true | _ -> false) prim_args'
-          then eval_prim (prim,List.map (function Some c -> c | None -> assert false) prim_args')
+          if List.for_all prim_args' ~f:(function Some _ -> true | _ -> false)
+          then eval_prim (prim,List.map prim_args' ~f:(function Some c -> c | None -> assert false))
           else None in
         match res with
           | Some c ->
             let c = Constant c in
             Flow.update_def info x c;
             Let (x,c)
-          | _ -> Let(x, Prim(prim, (List.map2 (fun arg c ->
-            match c with
+          | _ -> Let(x, Prim(prim, (
+            List.map2 prim_args prim_args' ~f:(fun arg c ->
+              match c with
               | Some ((Int _ | Float _) as c) -> Pc c
               | Some _ (* do not be duplicated other constant as
                           they're not represented with constant in javascript. *)
-              | None -> arg) prim_args prim_args')))
+              | None -> arg) )))
       end
     | _ -> i
 
@@ -305,11 +306,11 @@ let eval_branch info = function
 exception May_raise
 
 let rec do_not_raise pc visited blocks =
-  if AddrSet.mem pc visited then visited
+  if Addr.Set.mem pc visited then visited
   else
-  let visited = AddrSet.add pc visited in
-  let b = AddrMap.find pc blocks in
-  List.iter (function
+  let visited = Addr.Set.add pc visited in
+  let b = Addr.Map.find pc blocks in
+  List.iter b.body ~f:(function
     | Array_set (_,_,_)
     | Offset_ref (_,_)
     | Set_field (_,_,_) -> ()
@@ -321,10 +322,10 @@ let rec do_not_raise pc visited blocks =
       | Constant _
       | Closure _ -> ()
       | Apply (_,_,_) -> raise May_raise
-      | Prim (Extern name, _) when Jsoo_primitive.is_pure name -> ()
+      | Prim (Extern name, _) when Primitive.is_pure name -> ()
       | Prim (Extern _, _) -> raise May_raise
       | Prim (_,_) -> ()
-  ) b.body;
+  );
   match b.branch with
   | Raise _ -> raise May_raise
   | Stop
@@ -336,22 +337,24 @@ let rec do_not_raise pc visited blocks =
     let visited = do_not_raise pc2 visited blocks in
     visited
   | Switch (_, a1, a2) ->
-    let visited = Array.fold_left (fun visited (pc,_) -> do_not_raise pc visited blocks) visited a1 in
-    let visited = Array.fold_left (fun visited (pc,_) -> do_not_raise pc visited blocks) visited a2 in
+    let visited = Array.fold_left a1 ~init:visited ~f:(fun visited (pc,_) ->
+      do_not_raise pc visited blocks) in
+    let visited = Array.fold_left a2 ~init:visited ~f:(fun visited (pc,_) ->
+      do_not_raise pc visited blocks) in
     visited
   | Pushtrap _ -> raise May_raise
 
 let drop_exception_handler blocks =
-  AddrMap.fold (fun pc _ blocks ->
-    match AddrMap.find pc blocks with
+  Addr.Map.fold (fun pc _ blocks ->
+    match Addr.Map.find pc blocks with
     | { branch = Pushtrap ((addr,_) as cont1,_x,_cont2,_); handler = parent_hander; _}  as b ->
       begin
         try
-          let visited = do_not_raise addr AddrSet.empty blocks in
+          let visited = do_not_raise addr Addr.Set.empty blocks in
           let b = { b with branch = Branch cont1 } in
-          let blocks = AddrMap.add pc b blocks in
-          let blocks = AddrSet.fold (fun pc2 blocks ->
-            let b = AddrMap.find pc2 blocks in
+          let blocks = Addr.Map.add pc b blocks in
+          let blocks = Addr.Set.fold (fun pc2 blocks ->
+            let b = Addr.Map.find pc2 blocks in
             assert(b.handler <> parent_hander);
             let branch =
               match b.branch with
@@ -361,7 +364,7 @@ let drop_exception_handler blocks =
               | x -> x
             in
             let b = { b with branch; handler = parent_hander } in
-            AddrMap.add pc2 b blocks
+            Addr.Map.add pc2 b blocks
           ) visited blocks
           in
           blocks
@@ -370,9 +373,9 @@ let drop_exception_handler blocks =
     | _ -> blocks) blocks blocks
 
 let eval info blocks =
-  AddrMap.map
+  Addr.Map.map
     (fun block ->
-       let body = List.map (eval_instr info) block.body in
+       let body = List.map block.body ~f:(eval_instr info) in
        let branch = eval_branch info block.branch in
        { block with
          Code.body;

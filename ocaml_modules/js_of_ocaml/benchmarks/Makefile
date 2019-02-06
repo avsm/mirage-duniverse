@@ -1,8 +1,8 @@
 # graphs without precompiled programs:
-GRAPHSNOPR = time.pdf time-optim.pdf time-ocamljs.pdf nativejs.pdf
+GRAPHSNOPR = time.pdf time-optim.pdf nativejs.pdf
 
 # graphs with precompiled programs:
-GRAPHSPR = size.pdf size-ocamljs.pdf size-optim.pdf compiletime.pdf
+GRAPHSPR = size.pdf size-optim.pdf compiletime.pdf
 
 # For full benchs:
 all: _perf graphsnopr graphspr _noperf
@@ -19,15 +19,12 @@ exes= $(wildcard programs/*)
 exesnames = $(exes:programs/%=%)
 
 missingsizesml = $(exesnames:%=results/sizes/ml/%)
-missingsizesocamljs = $(exesnames:%=results/sizes/ocamljs/%)
-missingsizes=$(missingsizesml) $(missingsizesocamljs)
+missingsizes=$(missingsizesml)
 
 missingcompiletimes = $(exesnames:%=results/compiletimes/`hostname`/byte/%) $(exesnames:%=results/compiletimes/`hostname`/opt/%)
-possiblymissingbenchs = results/times/`hostname`/nitro/js_of_ocaml/kb results/times/`hostname`/tm/js_of_ocaml/hamming results/times/`hostname`/tm/js_of_ocaml/splay
 
-OCAML=ocaml unix.cma
-RUN=$(OCAML) ./run.ml
-REPORT=$(OCAML) ./report.ml
+RUN=dune exec ./run.exe --
+REPORT=dune exec ./report.exe --
 
 .PHONY: $(GRAPHSNOPR:.pdf=.svg) $(GRAPHSPR:.pdf=.svg) size.gpl _noprecomp
 
@@ -43,14 +40,12 @@ __precomp:
 __run:
 	make _noprecomp
 	$(RUN) -all
-	make __possiblymissingbenchs
 	touch __run
 
 fastrun:
 	make _noprecomp
 	echo "======================== WARNING: fast benchs!"
 	$(RUN) -ffast -all
-	make __possiblymissingbenchs
 	touch __run
 
 _noprecomp:
@@ -73,10 +68,6 @@ __missingcompiletimes:
 	for i in $(missingcompiletimes) ; do if [ ! -f $$i ] ; then echo 0 > $$i ; fi ; done
 	touch __missingcompiletimes
 
-__possiblymissingbenchs:
-	for i in $(possiblymissingbenchs) ; do if [ ! -f $$i ] ; then echo 0 > $$i ; fi ; done
-	touch __possiblymissingbenchs
-
 __missingsizes: __precomp
 	for i in $(missingsizes) ; do if [ ! -f $$i ] ; then echo 0 > $$i ; fi ; done
 	if [ -f results/sizes/ml/unison ] ; then echo 828471 > results/sizes/ml/unison ; fi
@@ -90,8 +81,6 @@ __missingsizes: __precomp
 	if [ -f results/sizes/ml/planet ] ; then echo 16488 > results/sizes/ml/planet ; fi
 	if [ -f results/sizes/ml/sudoku ] ; then echo 2837 > results/sizes/ml/sudoku ; fi
 	touch __missingsizes
-# file sizes (without comments and spaces)
-# find ../examples/sudoku/ -name "*.ml" -exec cat {} \; | perl /home/balat/kroko/js_of_ocaml/benchmarks/lib/remove_comments.pl | sed 's/^ *//g' | wc -c
 
 # To generate SVG, we first need to run the benchs,
 # then to add data for precompiled programs
@@ -149,32 +138,6 @@ size-optim.svg: __run __missingsizes
 	 -max 2.5 -svg 7 650 150 -edgecaption -ylabel Size \
 	 > $@
 
-time-ocamljs.svg: __run
-	$(REPORT) -config report-time-ocamljs.config \
-	 -omit binary_trees -omit fannkuch_redux -omit loop \
-	 -omit fannkuch_redux_2 \
-	 -max 5.5 -svg 7 500 150 -edgecaption -ylabel "Execution time" \
-	 > $@
-
-size-ocamljs.svg: __run __precomp
-	$(REPORT) -config report-size-ocamljs.config -omit loop \
-	 -omit binary_trees -omit fannkuch_redux \
-	 -omit fannkuch_redux_2 \
-	 -omit spectral_norm \
-	 -omit boyer_no_exc -omit kb_no_exc \
-	 -omit boulderdash \
-	 -omit canvas \
-	 -omit cubes \
-	 -omit minesweeper \
-	 -omit planet \
-	 -omit sudoku \
-	 -omit js_of_ocaml \
-	 -omit ocsigen_server \
-	 -omit ocamlc \
-	 -omit unison \
-	 -max 5.5 -svg 7 500 150 -edgecaption -ylabel Size \
-	 > $@
-
 compiletime.svg: __run __precomp __missingcompiletimes
 	$(REPORT) -config report-compiletime.config \
 	 -omit binary_trees -omit fannkuch_redux -omit loop \
@@ -192,11 +155,21 @@ nativejs.svg: __run
 	inkscape -D --export-pdf="$@" -w 210 -h 297 $<
 
 _perf:
-	for i in /sys/devices/system/cpu/cpu* ; do if [ -f $$i/cpufreq/scaling_governor ] ; then sudo bash -c "echo performance > $$i/cpufreq/scaling_governor" ; fi ;done
+	for i in /sys/devices/system/cpu/cpu* ; \
+	do \
+	if [ -f $$i/cpufreq/scaling_governor ] ; then \
+		sudo bash -c "echo performance > $$i/cpufreq/scaling_governor" ; \
+	fi ; \
+	done
 
 _noperf:
-	for i in /sys/devices/system/cpu/cpu* ; do if [ -f $$i/cpufreq/scaling_governor ] ; then sudo bash -c "echo ondemand > $$i/cpufreq/scaling_governor" ; fi ; done
+	for i in /sys/devices/system/cpu/cpu* ; \
+	do \
+	if [ -f $$i/cpufreq/scaling_governor ] ; then \
+		sudo bash -c "echo powersave > $$i/cpufreq/scaling_governor" ; \
+	fi ; \
+	done
 
 
 clean: _noperf
-	rm -rf results build __precomp __run *.svg *.pdf *~ precomptmp __missingsizes __missingcompiletimes __possiblymissingbenchs
+	rm -rf results build __precomp __run *.svg *.pdf *~ precomptmp __missingsizes __missingcompiletimes

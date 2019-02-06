@@ -1,4 +1,3 @@
-#! /usr/bin/ocaml unix.cma
 (* Js_of_ocaml benchmarks
  * http://www.ocsigen.org/js_of_ocaml/
  * Copyright (C) 2011 Jérôme Vouillon
@@ -17,249 +16,259 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
- *)
+*)
 
-let verbose = ref true;;
+open StdLabels
+open Common
 
-#use "lib/common.ml"
+module Param = struct
+  type t =
+    { warm_up_time : float
+    ; min_measures : int
+    ; max_confidence : float
+    ; max_duration : float
+    ; verbose : bool }
 
-(****)
+  let default =
+    { warm_up_time = 1.0
+    ; min_measures = 10
+    ; max_confidence = 0.03
+    ; max_duration = 5.
+    ; verbose = false }
 
-let run_command cmd =
-  if !verbose then Format.printf "+ %s@." cmd;
+  let fast x = {x with min_measures = 5; max_confidence = 0.15}
+
+  let ffast x = {x with min_measures = 2; max_confidence = 42.}
+
+  let verbose x = {x with verbose = true}
+end
+
+let run_command ~verbose cmd =
+  if verbose then Format.printf "+ %s@." cmd;
   match Unix.system cmd with
-    Unix.WEXITED res when res <> 0 ->
-      Format.eprintf "Command '%s' failed with exit code %d.@." cmd res;
-      raise Exit
+  | Unix.WEXITED res when res <> 0 ->
+      failwith (Printf.sprintf "Command '%s' failed with exit code %d." cmd res)
   | Unix.WSIGNALED s ->
-      Format.eprintf "Command '%s' killed with signal %d.@." cmd s;
-      raise Exit
-  | _ ->
-    ()
+      failwith (Format.sprintf "Command '%s' killed with signal %d." cmd s)
+  | _ -> ()
 
-let time cmd =
+let time ~verbose cmd =
   let t1 = (Unix.times ()).Unix.tms_cutime in
-  run_command cmd;
+  run_command ~verbose cmd;
   let t2 = (Unix.times ()).Unix.tms_cutime in
   t2 -. t1
 
-(****)
+let compile_gen
+    (param : Param.t) ~comptime prog src_dir (src_spec : Spec.t) dst_dir dst_spec =
+  mkdir (Spec.dir ~root:dst_dir dst_spec);
+  List.iter (Spec.find_names ~root:src_dir src_spec) ~f:(fun nm ->
+      let src = Spec.file ~root:src_dir src_spec nm in
+      let dst = Spec.file ~root:dst_dir dst_spec nm in
+      if need_update src dst
+      then
+        let cmd = prog ~src ~dst in
+        try
+          if comptime
+          then write_measures compiletimes dst_spec nm [time ~verbose:param.verbose cmd]
+          else run_command ~verbose:param.verbose cmd
+        with Failure s -> Format.eprintf "Failure: %s@." s )
 
-let compile_gen ~comptime prog src_dir src_spec dst_dir dst_spec =
-  mkdir (dir dst_dir dst_spec);
-  List.iter
-    (fun nm ->
-       let src = file src_dir src_spec nm in
-       let dst = file dst_dir dst_spec nm in
-       if need_update src dst then begin
-         let cmd = prog src dst in
-         try
-           if comptime
-           then write_measures compiletimes dst_spec nm [time cmd]
-           else run_command cmd
-         with Exit -> ()
-
-       end)
-    (benchs src_dir src_spec)
-
-let compile ~comptime prog =
-  compile_gen ~comptime (Format.sprintf "%s %s -o %s" prog)
-
-let warm_up_time = 1.0
-let min_measures = ref 10
-let max_confidence = ref 0.03
-let max_duration = ref 1200.
-
-let fast_run () =
-  min_measures := 5; max_confidence := 0.15; max_duration := 30.
-
-let ffast_run () =
-  min_measures := 2; max_confidence := 42.; max_duration := 30.
+let compile param ~comptime prog =
+  compile_gen param ~comptime (fun ~src ~dst -> Printf.sprintf "%s %s -o %s" prog src dst)
 
 (****)
 
-let need_more l =
+let need_more ~print (param : Param.t) l =
   let a = Array.of_list l in
-  let (m, i) = mean_with_confidence a in
   let n = Array.length a in
-  Format.eprintf "==> %f +/- %f / %f %d@." m i (i /. m) n;
-  n < !min_measures || (i /. m > !max_confidence /. 2.)
+  if n = 0
+  then true
+  else
+    let m, i = mean_with_confidence a in
+    if print then Format.eprintf "==> %f +/- %f / %f %d\r%!" m i (i /. m) n;
+    n < param.min_measures || i /. m > param.max_confidence /. 2.
 
-let warm_up cmd =
+let warm_up (param : Param.t) cmd =
   let t = ref 0. in
-  while !t < warm_up_time do
-    let t' = time cmd in
-    if t' > !max_duration then raise Exit;
+  while !t < param.warm_up_time do
+    let t' = time ~verbose:param.verbose cmd in
+    if t' > param.max_duration
+    then failwith (Printf.sprintf "Warmup took too long %.1fs" t');
     t := !t +. t'
   done
 
-let rec measure_rec cmd l =
-  let t = time cmd in
+let rec measure_rec ~print (param : Param.t) cmd l =
+  let t = time ~verbose:param.verbose cmd in
   let l = t :: l in
-  if need_more l then measure_rec cmd l else l
+  if need_more ~print param l then measure_rec ~print param cmd l else l
 
-let measure_one code meas spec nm cmd =
+let measure_one param code meas spec nm cmd =
   let l =
-    if measures_need_update code meas spec nm then [] else
-    read_measures meas spec nm
+    if measures_need_update code meas spec nm then [] else read_measures meas spec nm
   in
-  if need_more l then begin
-    warm_up cmd;
-    let l = measure_rec cmd l in
-    write_measures meas spec nm l;
-    l
-  end else
-    l
+  if need_more ~print:false param l
+  then (
+    Format.eprintf "warming up ...\r%!";
+    warm_up param cmd;
+    let l = measure_rec ~print:true param cmd l in
+    write_measures meas spec nm l; Format.eprintf "\n%!"; l )
+  else l
 
-let measure code meas spec cmd =
-  List.iter
-    (fun nm ->
-       let cmd = cmd ^ file code spec nm in
-       try
-         ignore (measure_one code meas spec nm cmd)
-       with Exit -> ())
-    (benchs code spec)
+let measure param code meas spec cmd =
+  List.iter (Spec.find_names ~root:code spec) ~f:(fun nm ->
+      let cmd = if cmd = "" then cmd else cmd ^ " " in
+      let cmd = Format.sprintf "%s%s" cmd (Spec.file ~root:code spec nm) in
+      Format.eprintf "Measure %s@." cmd;
+      try ignore (measure_one param code meas spec nm cmd) with Failure s ->
+        Format.eprintf "Failure: %s@." s )
 
 (****)
 
-let compile_no_ext ~comptime prog src_dir src_spec dst_dir dst_spec =
-  compile_gen ~comptime prog src_dir src_spec dst_dir (no_ext dst_spec)
+let compile_no_ext param ~comptime prog src_dir src_spec dst_dir dst_spec =
+  compile_gen param ~comptime prog src_dir src_spec dst_dir (Spec.no_ext dst_spec)
 
-let ml_size =
-  compile_no_ext
-    ~comptime:false
-    (Format.sprintf "perl ./lib/remove_comments.pl %s | sed 's/^ *//g' | wc -c > %s")
+let ml_size param =
+  compile_no_ext param ~comptime:false (fun ~src ~dst ->
+      Format.sprintf
+        "perl ./utils/remove_comments.pl %s | sed 's/^ *//g' | wc -c > %s"
+        src
+        dst )
 
-let file_size =
-  compile_no_ext ~comptime:false (Format.sprintf "wc -c < %s > %s")
+let file_size param =
+  compile_no_ext param ~comptime:false (fun ~src ~dst ->
+      Format.sprintf "wc -c < %s > %s" src dst )
 
-let compr_file_size =
-  compile_no_ext
-    ~comptime:false
-    (Format.sprintf "sed 's/^ *//g' %s | gzip -c | wc -c > %s")
+let compr_file_size param =
+  compile_no_ext param ~comptime:false (fun ~src ~dst ->
+      Format.sprintf "sed 's/^ *//g' %s | gzip -c | wc -c > %s" src dst )
 
 (* let runtime_size = *)
 (*   compile_no_ext ~comptime:false (Format.sprintf "head -n -1 %s | wc -c > %s") *)
 
-let gen_size =
-  compile_no_ext ~comptime:false (Format.sprintf "tail -1 %s | wc -c > %s")
+let gen_size param =
+  compile_no_ext param ~comptime:false (fun ~src ~dst ->
+      Format.sprintf "tail -1 %s | wc -c > %s" src dst )
 
 (****)
 
-let compile_only = ref false
-let full = ref false
-let conf = ref "run.config"
-let do_ocamljs = ref true
-let nobyteopt = ref false
-
-let has_ocamljs = Sys.command "ocamljs 2> /dev/null" = 0
-let run_ocamljs () = !do_ocamljs && has_ocamljs
-
-
-let interpreters = ref []
-
-let read_config () =
-  let f = !conf in
-  if not (Sys.file_exists f) then begin
-    Format.eprintf "Configuration file '%s' not found!@." f;
-    exit 1
-  end;
+let read_config file =
+  if not (Sys.file_exists file)
+  then (
+    Format.eprintf "Configuration file '%s' not found!@." file;
+    exit 1 );
   let i = ref [] in
-  let ch = open_in f in
-  let split_at_space l =
-    let i = String.index l ' ' in
-    (String.sub l 0 i, String.sub l (i + 1) (String.length l - i - 1))
-  in
-  begin try
-    while true do
-      let l = input_line ch in
-      if l.[0] <> '#'
-      then begin
-        try
-          let (kind, rem) = split_at_space l in
-          match kind with
-              "interpreter" ->
-                let (nm, cmd) = split_at_space rem in
-                i := (cmd ^ " ", nm) :: !i
-            | _ ->
+  let ch = open_in file in
+  ( try
+      while true do
+        let line = String.trim (input_line ch) in
+        if line.[0] <> '#'
+        then
+          match
+            List.filter
+              ~f:(function "" -> false | _ -> true)
+              (String.split_on_char line ~sep:' ')
+          with
+          | "interpreter" :: nm :: rem -> i := (String.concat ~sep:" " rem, nm) :: !i
+          | ["interpreter"] ->
+              Format.eprintf "Malformed config option '%s'@." line;
+              exit 1
+          | kind :: _ ->
               Format.eprintf "Unknown config option '%s'@." kind;
               exit 1
-        with Not_found ->
-          Format.eprintf "Bad config line '%s'@." l;
-          exit 1
-      end
-    done
-  with End_of_file -> () end;
-  close_in ch;
-  interpreters := List.rev !i
+          | [] ->
+              Format.eprintf "Bad config line '%s'@." line;
+              exit 1
+      done
+    with End_of_file -> () );
+  close_in ch; List.rev !i
 
 let _ =
+  let compile_only = ref false in
+  let full = ref false in
+  let conf_file = ref "run.config" in
+  let do_ocamljs = ref true in
+  let nobyteopt = ref false in
+  let param = ref Param.default in
+  let fast_run () = param := Param.fast !param in
+  let ffast_run () = param := Param.ffast !param in
+  let verbose () = param := Param.verbose !param in
   let options =
-    [("-compile", Arg.Set compile_only, " only compiles");
-     ("-all", Arg.Set full, " run all benchmarks");
-     ("-config", Arg.Set_string conf, "<file> use <file> as a config file");
-     ("-fast", Arg.Unit fast_run, " perform less iterations");
-     ("-ffast", Arg.Unit ffast_run, " perform very few iterations");
-     ("-noocamljs", Arg.Clear do_ocamljs, " do not run ocamljs");
-     ("-nobyteopt", Arg.Set nobyteopt, " do not run benchs on bytecode and native programs")]
+    [ "-compile", Arg.Set compile_only, " only compiles"
+    ; "-all", Arg.Set full, " run all benchmarks"
+    ; "-config", Arg.Set_string conf_file, "<file> use <file> as a config file"
+    ; "-fast", Arg.Unit fast_run, " perform less iterations"
+    ; "-ffast", Arg.Unit ffast_run, " perform very few iterations"
+    ; "-verbose", Arg.Unit verbose, " verbose"
+    ; "-noocamljs", Arg.Clear do_ocamljs, " do not run ocamljs"
+    ; ( "-nobyteopt"
+      , Arg.Set nobyteopt
+      , " do not run benchs on bytecode and native programs" ) ]
   in
-  Arg.parse (Arg.align options)
+  Arg.parse
+    (Arg.align options)
     (fun s -> raise (Arg.Bad (Format.sprintf "unknown option `%s'" s)))
     (Format.sprintf "Usage: %s [options]" Sys.argv.(0));
-
-  read_config ();
-
-  compile ~comptime:true "ocamlc" src ml code byte;
-  compile ~comptime:true "ocamlopt" src ml code opt;
-  compile ~comptime:true "js_of_ocaml" code byte code js_of_ocaml;
-  compile ~comptime:true "js_of_ocaml -disable inline" code byte code js_of_ocaml_inline;
-  compile ~comptime:true "js_of_ocaml -disable deadcode" code byte code js_of_ocaml_deadcode;
-  compile ~comptime:true "js_of_ocaml -disable compact" code byte code js_of_ocaml_compact;
-  compile ~comptime:true "js_of_ocaml -disable optcall" code byte code js_of_ocaml_call;
-  if run_ocamljs () then compile ~comptime:true "ocamljs" src ml code ocamljs;
-  compile ~comptime:true "ocamlc -unsafe" src ml code byte_unsafe;
-  compile ~comptime:true "ocamlopt" src ml code opt_unsafe;
-  compile ~comptime:true "js_of_ocaml" code byte_unsafe code js_of_ocaml_unsafe;
-  if run_ocamljs () then compile ~comptime:true "ocamljs -unsafe" src ml code ocamljs_unsafe;
-
-  ml_size src ml sizes ml;
-  file_size code byte sizes byte;
-  file_size code js_of_ocaml sizes (sub_spec js_of_ocaml "full");
-  compr_file_size code js_of_ocaml sizes (sub_spec js_of_ocaml "gzipped");
-  (* runtime_size code js_of_ocaml sizes (sub_spec js_of_ocaml "runtime"); *)
-  gen_size code js_of_ocaml sizes (sub_spec js_of_ocaml "generated");
-  gen_size code js_of_ocaml_inline sizes js_of_ocaml_inline;
-  gen_size code js_of_ocaml_deadcode sizes js_of_ocaml_deadcode;
-  gen_size code js_of_ocaml_compact sizes js_of_ocaml_compact;
-  gen_size code js_of_ocaml_call sizes js_of_ocaml_call;
-  if run_ocamljs () then compr_file_size code ocamljs sizes ocamljs;
-
-  if !compile_only then exit 0;
-
-  if not !nobyteopt then begin
-    measure code times opt "";
-    measure code times byte "";
-  end;
-
-  let (compilers, suites) =
-    if !full then
-      (!interpreters,
-       [js_of_ocaml; 
-        js_of_ocaml_unsafe; 
-        js_of_ocaml_inline; 
-        js_of_ocaml_deadcode; 
-        js_of_ocaml_compact; 
-        js_of_ocaml_call; 
-        ocamljs;
-        ocamljs_unsafe; ])
-    else
-      (begin match !interpreters with i :: r -> [i] | [] -> [] end,
-       [js_of_ocaml])
+  let run_ocamljs = !do_ocamljs && Sys.command "ocamljs 2> /dev/null" = 0 in
+  let conf_file = !conf_file in
+  let compile_only = !compile_only in
+  let nobyteopt = !nobyteopt in
+  let full = !full in
+  let param = !param in
+  let interpreters = read_config conf_file in
+  let compile = compile param ~comptime:true in
+  let compile_jsoo opts = compile (Format.sprintf "js_of_ocaml -q %s" opts) in
+  Format.eprintf "Compile@.";
+  compile "ocamlc" src Spec.ml code Spec.byte;
+  compile "ocamlopt" src Spec.ml code Spec.opt;
+  compile_jsoo "" code Spec.byte code Spec.js_of_ocaml;
+  compile_jsoo "--disable inline" code Spec.byte code Spec.js_of_ocaml_inline;
+  compile_jsoo "--disable deadcode" code Spec.byte code Spec.js_of_ocaml_deadcode;
+  compile_jsoo "--disable compact" code Spec.byte code Spec.js_of_ocaml_compact;
+  compile_jsoo "--disable optcall" code Spec.byte code Spec.js_of_ocaml_call;
+  if run_ocamljs then compile "ocamljs" src Spec.ml code Spec.ocamljs;
+  compile "ocamlc -unsafe" src Spec.ml code Spec.byte_unsafe;
+  compile "ocamlopt" src Spec.ml code Spec.opt_unsafe;
+  compile_jsoo "" code Spec.byte_unsafe code Spec.js_of_ocaml_unsafe;
+  if run_ocamljs then compile "ocamljs -unsafe" src Spec.ml code Spec.ocamljs_unsafe;
+  Format.eprintf "Sizes@.";
+  ml_size param src Spec.ml sizes Spec.ml;
+  file_size param code Spec.byte sizes Spec.byte;
+  file_size param code Spec.js_of_ocaml sizes (Spec.sub_spec Spec.js_of_ocaml "full");
+  compr_file_size
+    param
+    code
+    Spec.js_of_ocaml
+    sizes
+    (Spec.sub_spec Spec.js_of_ocaml "gzipped");
+  (* runtime_size param code Spec.js_of_ocaml sizes (Spec.sub_spec Spec.js_of_ocaml "runtime"); *)
+  gen_size param code Spec.js_of_ocaml sizes (Spec.sub_spec Spec.js_of_ocaml "generated");
+  gen_size param code Spec.js_of_ocaml_inline sizes Spec.js_of_ocaml_inline;
+  gen_size param code Spec.js_of_ocaml_deadcode sizes Spec.js_of_ocaml_deadcode;
+  gen_size param code Spec.js_of_ocaml_compact sizes Spec.js_of_ocaml_compact;
+  gen_size param code Spec.js_of_ocaml_call sizes Spec.js_of_ocaml_call;
+  if run_ocamljs then compr_file_size param code Spec.ocamljs sizes Spec.ocamljs;
+  if compile_only then exit 0;
+  Format.eprintf "Measure@.";
+  if not nobyteopt
+  then (
+    measure param code times Spec.opt "";
+    measure param code times Spec.byte "" );
+  let compilers, suites =
+    if full
+    then
+      ( interpreters
+      , [ Some Spec.js_of_ocaml
+        ; Some Spec.js_of_ocaml_unsafe
+        ; Some Spec.js_of_ocaml_inline
+        ; Some Spec.js_of_ocaml_deadcode
+        ; Some Spec.js_of_ocaml_compact
+        ; Some Spec.js_of_ocaml_call
+        ; (if run_ocamljs then Some Spec.ocamljs else None)
+        ; (if run_ocamljs then Some Spec.ocamljs_unsafe else None) ] )
+    else (match interpreters with i :: _ -> [i] | [] -> []), [Some Spec.js_of_ocaml]
   in
-  List.iter
-    (fun (comp, dir) ->
-      measure src (Filename.concat times dir) js comp;
-      List.iter
-        (fun suite -> measure code (Filename.concat times dir) suite comp)
-        suites)
-    compilers
+  List.iter compilers ~f:(fun (comp, dir) ->
+      measure param src (Filename.concat times dir) Spec.js comp;
+      List.iter suites ~f:(function
+          | None -> ()
+          | Some suite -> measure param code (Filename.concat times dir) suite comp ) )

@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/ocsigen/js_of_ocaml.png)](https://travis-ci.org/ocsigen/js_of_ocaml)
+[![Build Status](https://travis-ci.org/ocsigen/js_of_ocaml.svg?branch=master)](https://travis-ci.org/ocsigen/js_of_ocaml)
 
 # Js_of_ocaml (jsoo)
 
@@ -13,7 +13,7 @@ like browsers and Node.js.
   * We believe this compiler will prove much easier to maintain than a
     retargeted OCaml compiler, as the bytecode provides a very stable
     API.
-    
+
 ## Requirements
   Findlib, cppo
   See [opam](https://github.com/ocsigen/js_of_ocaml/blob/master/js_of_ocaml-compiler.opam) file for version constraints.
@@ -27,7 +27,7 @@ like browsers and Node.js.
   * [yojson](https://github.com/mjambon/yojson)
 
 ### Toplevel requirements
- * base64, tyxml, reactiveData
+ * tyxml, reactiveData
  * ocp-indent: needed to support indentation in the toplevel
  * higlo: needed to support Syntax highlighting in the toplevel
  * cohttp: needed to build the toplevel webserver

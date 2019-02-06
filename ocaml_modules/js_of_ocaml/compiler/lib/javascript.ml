@@ -17,7 +17,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  *)
-
+open Stdlib
 
 module Label = struct
   type t =
@@ -210,7 +210,7 @@ let string_of_number v =
 
 exception Not_an_ident
 let is_ident =
-  let l = Array.init 256 (fun i ->
+  let l = Array.init 256 ~f:(fun i ->
     let c = Char.chr i in
     if (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c = '_' || c = '$'
     then 1
@@ -219,7 +219,7 @@ let is_ident =
     else 0
   ) in
   fun s ->
-    not (Util.StringSet.mem s Reserved.keyword) &&
+    not (StringSet.mem s Reserved.keyword) &&
     try
       for i = 0 to String.length s - 1 do
         let code = l.(Char.code(s.[i])) in

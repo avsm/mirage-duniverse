@@ -1,25 +1,27 @@
-VERSION := $(shell head -n 1 VERSION)
-
 all:
-	dune build @install @DEFAULT -j 8
+	dune build @install @default -j 8
 
 tests:
 	dune runtest
 
 test runtest runtests: tests
 
-doc: all
-	$(MAKE) -C doc
+doc:
+	dune build @ocsigen-doc
 
 promote:
 	dune promote
 
-toplevel-examples: all
-	dune exec -- make -C toplevel/examples/lwt_toplevel_bin
-
 clean:
 	dune clean
-	$(MAKE) -C toplevel/examples/lwt_toplevel_bin clean
-	$(MAKE) -C doc clean
 
-.PHONY: all tests test runtest runtests doc toplevel-examples clean remove-lexer-and-parser promote-lexer-and-parser
+installdoc:
+	rm -rf _wikidoc
+	git clone ./ _wikidoc
+	(cd _wikidoc && git checkout wikidoc)
+	rm -rf _wikidoc/doc/dev/*
+	cp -r _build/default/api _wikidoc/doc/dev/api
+	cp -r _build/default/manual _wikidoc/doc/dev/manual
+	find _wikidoc/doc/dev/ -name dune -delete
+
+.PHONY: all tests test runtest runtests doc clean installdoc
