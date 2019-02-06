@@ -13,19 +13,19 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *)
-(** {1 Clock devices for MirageOS}
+(** Clock devices for MirageOS
 
     This module define clock devices signatures for MirageOS.
 
     {e Release %%VERSION%% } *)
 
-(** {1 POSIX clock}
+(** {2 POSIX clock}
 
     Clock counting time since the Unix epoch. Subject to adjustment by
     e.g. NTP. *)
 module type PCLOCK = sig
 
-  include Mirage_device.S
+  include Mirage_device.S with type t = unit
 
   val now_d_ps : t -> int * int64
   (** [now_d_ps ()] is [(d, ps)] representing the POSIX time occuring
@@ -45,13 +45,13 @@ module type PCLOCK = sig
 
 end
 
-(** {1 Monotonic clock}
+(** {2 Monotonic clock}
 
     Clock returning monotonic time since an arbitrary point. To be
     used for eg. profiling. *)
 module type MCLOCK = sig
 
-  include Mirage_device.S
+  include Mirage_device.S with type t = unit
 
   val elapsed_ns : t -> int64
   (** [elapsed_ns ()] is a monotonically increasing count of
