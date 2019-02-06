@@ -59,14 +59,17 @@ let walk_directory_tree exts walkfn root_dir =
   Unix.chdir root_dir;
   walk "."
 
-open Arg
 open Printf
 
 let chunk_info = Hashtbl.create 1
 let file_info = Hashtbl.create 1
 
 let output_generated_by oc binary =
-  let t = Unix.gettimeofday () in
+  let t =
+    try
+      float_of_string (Sys.getenv "SOURCE_DATE_EPOCH")
+    with Not_found ->
+      Unix.gettimeofday () in
   let months = [| "Jan"; "Feb"; "Mar"; "Apr"; "May"; "Jun";
                   "Jul"; "Aug"; "Sep"; "Oct"; "Nov"; "Dec" |] in
   let days = [| "Sun"; "Mon"; "Tue"; "Wed"; "Thu"; "Fri"; "Sat" |] in
@@ -150,7 +153,6 @@ let read name =
 let output_lwt_skeleton_ml oc =
   fprintf oc "
 open Lwt
-open Result
 
 type t = unit
 
