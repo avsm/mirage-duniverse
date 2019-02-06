@@ -15,7 +15,6 @@
  *
  *)
 
-open Result
 open Protocol_9p_infix
 open Protocol_9p_info
 module Error = Protocol_9p_error
@@ -50,7 +49,7 @@ struct
 
   let get_info t = t.info
 
-  let default_exn_converter info exn =
+  let default_exn_converter _info exn =
     Response.Err {
       Response.Err.ename = Printexc.to_string exn;
       errno = None;
@@ -164,7 +163,7 @@ struct
                Log.err (fun f -> f "Uncaught exception handling %a: %a"
                          Request.pp request
                          Fmt.exn_backtrace (exn, backtrace));
-               Lwt.return (Result.Ok (exn_converter info exn)))
+               Lwt.return (Ok (exn_converter info exn)))
           >>= begin function
             | Error (`Msg message) ->
               Lwt.return (error_response request.Request.tag message)
@@ -283,11 +282,11 @@ struct
         | Wstat x  -> wrap Filesystem.wstat  x (fun x -> Response.Wstat x)
         | Version _ | Auth _ | Flush _ ->
             let err = {Response.Err.ename = "Function not implemented"; errno = None} in
-            Lwt.return (Result.Ok (Response.Err (adjust_errno err)))
+            Lwt.return (Ok (Response.Err (adjust_errno err)))
       ) in
 
       let open Lwt in
-      let cancel_t, cancel_u = Lwt.task () in
+      let cancel_t, _ = Lwt.task () in
       receive_cb ~cancel:cancel_t payload
       >>= begin function
         | Error (`Msg message) ->
@@ -318,10 +317,10 @@ struct
           let open Lwt.Infix in
           dispatcher_t info exn_converter shutdown_complete_wakener receive_cb t
           >>= function
-          | Result.Error (`Msg m) ->
+          | Error (`Msg m) ->
             err (fun f -> f "dispatcher caught %s: no more requests will be handled" m);
             Lwt.return ()
-          | Result.Ok () ->
+          | Ok () ->
             Lwt.return ()
         ) (fun e ->
           err (fun f -> f "dispatcher caught %s: no more requests will be handled" (Printexc.to_string e));

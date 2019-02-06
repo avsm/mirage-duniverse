@@ -15,7 +15,6 @@
  *
  *)
 
-open Result
 open Protocol_9p_infix
 open Astring
 
@@ -159,7 +158,6 @@ module Make(Log: Protocol_9p_s.LOG)(FLOW: Mirage_flow_lwt.S) = struct
       Lwt_condition.signal t.free_tags_c ();
       Lwt.return () in
     let with_tag f =
-      let open Lwt in
       allocate_tag ()
       >>*= fun (tag, th) ->
       finally (fun () -> f (tag, th)) (fun () -> deallocate_tag tag) in
@@ -196,7 +194,7 @@ module Make(Log: Protocol_9p_s.LOG)(FLOW: Mirage_flow_lwt.S) = struct
     end
 
   let return_error = function
-    | Response.Err { Response.Err.ename } ->
+    | Response.Err { Response.Err.ename; _ } ->
       Lwt.return (Error (`Msg ename))
     | payload ->
       Lwt.return (error_msg "Server sent unexpected reply: %s" (Sexplib.Sexp.to_string (Response.sexp_of_payload  payload)))
@@ -290,9 +288,9 @@ module Make(Log: Protocol_9p_s.LOG)(FLOW: Mirage_flow_lwt.S) = struct
       read_one_packet reader
       >>*= fun response ->
       match response with
-      | { Response.payload = Response.Version v } ->
+      | { Response.payload = Response.Version v; _ } ->
         Lwt.return (Ok v)
-      | { Response.payload = p } -> return_error p
+      | { Response.payload = p; _ } -> return_error p
 
     let attach reader writer fid afid uname aname n_uname =
       let tag = Types.Tag.Set.min_elt Types.Tag.recommended in
@@ -303,9 +301,9 @@ module Make(Log: Protocol_9p_s.LOG)(FLOW: Mirage_flow_lwt.S) = struct
       read_one_packet reader
       >>*= fun response ->
       match response with
-      | { Response.payload = Response.Attach x } ->
+      | { Response.payload = Response.Attach x; _ } ->
         Lwt.return (Ok x)
-      | { Response.payload = p } -> return_error p
+      | { Response.payload = p; _ } -> return_error p
 
     let fid = function
       | 0l -> (* 0 is the pre-allocated FS root *) None
@@ -375,7 +373,6 @@ module Make(Log: Protocol_9p_s.LOG)(FLOW: Mirage_flow_lwt.S) = struct
   let walk_from_root t = LowLevel.walk t t.root
 
   let with_fid t f =
-    let open Lwt in
     LowLevel.allocate_fid t
     >>*= fun fid ->
     finally (fun () -> f fid) (fun () -> LowLevel.deallocate_fid t fid)
@@ -597,10 +594,10 @@ module Make(Log: Protocol_9p_s.LOG)(FLOW: Mirage_flow_lwt.S) = struct
       Lwt.catch (fun () ->
         dispatcher_t shutdown_complete_wakener t
         >>= function
-        | Result.Error (`Msg m) ->
+        | Error (`Msg m) ->
           err (fun f -> f "dispatcher caught %s: no more responses will be handled" m);
           Lwt.return ()
-        | Result.Ok () ->
+        | Ok () ->
           Lwt.return ()
       ) (fun e ->
         err (fun f -> f "dispatcher caught %s: no more responses will be handled" (Printexc.to_string e));

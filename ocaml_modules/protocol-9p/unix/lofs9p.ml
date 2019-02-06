@@ -15,14 +15,15 @@
  *
  *)
 
-(* This is an implementation of a POSIX loopback filesystem on top of
-   a POSIX syscall interface which is expected to be consumed by a
-   POSIX client. *)
+(* POSIX loopback filesystem on top of a POSIX syscall interface.
+
+   This interface is expected to be consumed by a POSIX client. *)
+
+[@@@warning "-27"]
 
 open Protocol_9p
 open Infix
 open Lwt
-open Result
 open Astring
 
 let (/) = Filename.concat
@@ -46,7 +47,7 @@ let qid_of_path realpath =
      else []) in
   let id = Int64.of_int stats.Lwt_unix.LargeFile.st_ino in
   let version = 0l in
-  Lwt.return (Result.Ok { flags; id; version })
+  Lwt.return (Ok { flags; id; version })
 
 let bad_fid = Lwt.return (Response.error "bad fid")
 let fid_in_use = Lwt.return (Response.error "fid already in use")
@@ -85,8 +86,6 @@ let make root = { root }
 
     let append path node = { segments = node::path.segments }
 
-    let of_segments segments = { segments = List.rev segments }
-
     let perms_of_code code =
       match code land 7 with
       | 1 -> [ `Execute ]
@@ -105,7 +104,7 @@ let make root = { root }
       >>= fun stats ->
       qid_of_path realpath
       >>*= fun qid ->
-      let { LargeFile.st_perm } = stats in
+      let { LargeFile.st_perm; _ } = stats in
       let owner = perms_of_code (st_perm lsr 6) in
       let group = perms_of_code (st_perm lsr 3) in
       let other = perms_of_code st_perm in
@@ -141,7 +140,7 @@ let make root = { root }
       let stat =
         Types.Stat.make ~name ~qid ~mode ~length ~atime ~mtime ~uid ~gid ?u ()
       in
-      Lwt.return (Result.Ok stat)
+      Lwt.return (Ok stat)
 
   end
 
@@ -211,14 +210,14 @@ let make root = { root }
             )
           >>= fun xs ->
           let rec write off rest = function
-            | [] -> Lwt.return (Result.Ok off)
+            | [] -> Lwt.return (Ok off)
             | x :: xs ->
               Path.(stat connection.t connection.info (append path x))
               >>*= fun stat ->
               let n = Types.Stat.sizeof stat in
               if off < offset
               then write Int64.(add off (of_int n)) rest xs
-              else if Cstruct.len rest < n then Lwt.return (Result.Ok off)
+              else if Cstruct.len rest < n then Lwt.return (Ok off)
               else
                 Lwt.return (Types.Stat.write stat rest)
                 >>*= fun rest ->
@@ -227,7 +226,7 @@ let make root = { root }
           write 0L rest (Array.to_list xs)
           >>*= fun offset' ->
           let data = Cstruct.sub rest 0 Int64.(to_int (max 0L (sub offset' offset))) in
-          Lwt.return (Result.Ok { Response.Read.data }) in
+          Lwt.return (Ok { Response.Read.data }) in
         t >>= fun x -> Lwt.return (errors_to_client x)
       | Some (Resource.File fd) ->
         Resource.with_lock resource
@@ -238,7 +237,7 @@ let make root = { root }
           )
         >>= fun n ->
         let data = Cstruct.(sub (of_bigarray buffer) 0 n) in
-        Lwt.return (Result.Ok { Response.Read.data })
+        Lwt.return (Ok { Response.Read.data })
       end
 
   let flags_of_mode mode =
@@ -282,7 +281,7 @@ let make root = { root }
             return_unit
           end )
         >>= fun () ->
-        Lwt.return (Result.Ok { Response.Open.qid; iounit = 0_l })
+        Lwt.return (Ok { Response.Open.qid; iounit = 0_l })
       end
 
   let clunk connection ~cancel { Request.Clunk.fid } =
@@ -293,14 +292,14 @@ let make root = { root }
       connection.fids := Types.Fid.Map.remove fid !(connection.fids);
       Resource.close resource
       >>= fun () ->
-      Lwt.return (Result.Ok ())
+      Lwt.return (Ok ())
     end
 
   let walk connection ~cancel { Request.Walk.fid; newfid; wnames } =
     let rec walk dir qids = function
       | [] ->
         connection.fids := Types.Fid.Map.add newfid (Resource.of_path dir) !(connection.fids);
-        Lwt.return (Result.Ok {
+        Lwt.return (Ok {
           Response.Walk.wqids = List.rev qids;
         })
       | x :: xs ->
@@ -318,13 +317,13 @@ let make root = { root }
       | path ->
         walk path [] wnames
 
-  let attach connection ~cancel { Request.Attach.fid } =
+  let attach connection ~cancel { Request.Attach.fid; _ } =
     (* bind the fid as another root *)
     connection.fids := Types.Fid.Map.add fid (Resource.of_path Path.root) !(connection.fids);
     let realpath = Path.realpath connection.t Path.root in
     qid_of_path realpath
     >>*= fun qid ->
-    Lwt.return (Result.Ok { Response.Attach.qid })
+    Lwt.return (Ok { Response.Attach.qid })
 
   let stat connection ~cancel { Request.Stat.fid } =
     match path_of_fid connection fid with
@@ -332,7 +331,7 @@ let make root = { root }
     | path ->
       Path.stat connection.t connection.info path
       >>*= fun stat ->
-      Lwt.return (Result.Ok { Response.Stat.stat })
+      Lwt.return (Ok { Response.Stat.stat })
 
   let bad_create msg = Lwt.return (Response.error "can't create %s" msg)
 
@@ -360,7 +359,7 @@ let make root = { root }
           Resource.of_dir connection.t (Path.append path name)
           >>= fun resource ->
           connection.fids := Types.Fid.Map.add fid resource !(connection.fids);
-          Lwt.return (Result.Ok {
+          Lwt.return (Ok {
             Response.Create.qid;
             iounit = 0_l;
           })
@@ -374,7 +373,7 @@ let make root = { root }
           qid_of_path realpath
           >>*= fun qid ->
           connection.fids := Types.Fid.Map.add fid (Resource.of_path (Path.append path name)) !(connection.fids);
-          Lwt.return (Result.Ok {
+          Lwt.return (Ok {
             Response.Create.qid;
             iounit = 0_l;
           })
@@ -398,7 +397,7 @@ let make root = { root }
             qid_of_path realpath
             >>*= fun qid ->
             connection.fids := Types.Fid.Map.add fid (Resource.of_path (Path.append path name)) !(connection.fids);
-            Lwt.return (Result.Ok {
+            Lwt.return (Ok {
               Response.Create.qid;
               iounit = 0_l;
             })
@@ -413,7 +412,7 @@ let make root = { root }
         qid_of_path realpath
         >>*= fun qid ->
         connection.fids := Types.Fid.Map.add fid (Resource.of_fd (Path.append path name) fd) !(connection.fids);
-        Lwt.return (Result.Ok {
+        Lwt.return (Ok {
           Response.Create.qid;
           iounit = 0_l;
         })
@@ -436,7 +435,7 @@ let make root = { root }
           )
         >>= fun written ->
         let count = Int32.of_int written in
-        Lwt.return (Result.Ok { Response.Write.count })
+        Lwt.return (Ok { Response.Write.count })
       end
 
   let set_mode path mode =
@@ -471,7 +470,7 @@ let make root = { root }
       let realpath = Path.realpath connection.t path in
       let {
         Types.Stat.ty; dev; qid;
-        mode; atime; mtime; length; name;
+        mode; atime; mtime; length; name; _
       } = stat in
       (* we just ignore any attempts to change muid, uid, gid *)
       if not (Types.Int16.is_any ty)
@@ -498,7 +497,7 @@ let make root = { root }
          then rename_local realpath name
          else return_unit
         ) >>= fun () ->
-        Lwt.return (Result.Ok ())
+        Lwt.return (Ok ())
       end
 
   let remove connection ~cancel { Request.Remove.fid } =
@@ -523,4 +522,4 @@ let make root = { root }
               fail e) in
       loop ()
       >>= fun () ->
-      Lwt.return (Result.Ok ())
+      Lwt.return (Ok ())
