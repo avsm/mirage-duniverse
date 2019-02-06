@@ -1,0 +1,3 @@
+hashcons.cmo : hashcons.cmi
+hashcons.cmx : hashcons.cmi
+hashcons.cmi :
