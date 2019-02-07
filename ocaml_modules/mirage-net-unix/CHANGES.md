@@ -1,3 +1,9 @@
+### v2.5.0 (06-Feb-2019)
+
+* Build with dune instead of jbuilder (@avsm)
+* Upgrade opam metadata to 2.0 (@avsm)
+* Refresh Travis matrix to 4.07 as well (@avsm)
+
 ### 2.4.1 (16-Jun-2017)
 
 * Build with jbuilder
