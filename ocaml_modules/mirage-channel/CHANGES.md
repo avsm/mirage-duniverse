@@ -1,3 +1,12 @@
+v3.2.0 2019-02-07
+-----------------
+
+- Port build to Dune (@avsm)
+- Fix ocamldoc format to be odoc-clean (@avsm)
+- Update opam metadata to 2.0 format (@avsm)
+- Update test matrix to OCaml 4.07 (#24 @hannesm)
+- Use io-page-unix instead of io-page.unix (#24 @hannesm)
+
 v3.1.0 2017-06-14
 -----------------
 

@@ -1,5 +1,4 @@
 open Lwt.Infix
-open Result
 
 module F = Mirage_flow_lwt.F
 

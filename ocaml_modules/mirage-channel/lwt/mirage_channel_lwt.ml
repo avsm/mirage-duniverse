@@ -19,7 +19,6 @@
 (** Buffered reading and writing over the Flow API *)
 
 open Lwt.Infix
-open Result
 
 module type S = Mirage_channel.S
   with type 'a io = 'a Lwt.t

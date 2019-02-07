@@ -1,31 +1,37 @@
-opam-version: "1.2"
-maintainer:   "Anil Madhavapeddy <anil@recoil.org>"
-authors:      ["Anil Madhavapeddy" "Mindy Preston" "Thomas Gazagnaire"]
-homepage:     "https://github.com/mirage/mirage-channel"
-doc:          "http://docs.mirage.io/mirage-channel"
-license:      "ISC"
-dev-repo:     "https://github.com/mirage/mirage-channel.git"
-bug-reports:  "https://github.com/mirage/mirage-channel/issues"
-tags:         ["org:mirage"]
-
-build: [
-  [ "jbuilder" "subst" ] {pinned}
-  [ "jbuilder" "build" "-p" name "-j" jobs ]
-]
-build-test: [
-  [ "jbuilder" "runtest" "-p" name "-j" jobs ]
-]
-
+opam-version: "2.0"
+maintainer: "Anil Madhavapeddy <anil@recoil.org>"
+authors: ["Anil Madhavapeddy" "Mindy Preston" "Thomas Gazagnaire"]
+license: "ISC"
+tags: "org:mirage"
+homepage: "https://github.com/mirage/mirage-channel"
+doc: "http://docs.mirage.io/mirage-channel"
+bug-reports: "https://github.com/mirage/mirage-channel/issues"
 depends: [
-  "jbuilder" {build & >="1.0+beta10"}
+  "ocaml" {>= "4.04.2"}
+  "dune" {build & >= "1.0"}
   "mirage-flow-lwt" {>= "1.2.0"}
   "mirage-channel" {>= "3.0.0"}
   "io-page"
-  "result"
   "lwt" {>= "2.4.7"}
   "cstruct"
   "logs"
-  "alcotest" {test}
+  "alcotest" {with-test}
+  "io-page-unix" {with-test}
 ]
-conflicts: [ "tcpip" {<"2.5.0"} ]
-available: [ ocaml-version >= "4.02.3"]
+conflicts: [
+  "tcpip" {< "2.5.0"}
+]
+build: [
+  ["dune" "subst"] {pinned}
+  ["dune" "build" "-p" name "-j" jobs]
+  ["dune" "runtest" "-p" name "-j" jobs] {with-test}
+]
+dev-repo: "git+https://github.com/mirage/mirage-channel.git"
+synopsis: "Buffered Lwt channels for MirageOS FLOW types"
+description: """
+Channels are buffered reader/writers built on top of unbuffered `FLOW`
+implementations.  This library is specialised to use the Lwt library
+for the IO impleentation.
+
+mirage-channel-lwt is distributed under the ISC license.
+"""

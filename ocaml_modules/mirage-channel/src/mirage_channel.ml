@@ -23,8 +23,6 @@
 
     {e Release %%VERSION%% } *)
 
-open Result
-
 module type S = sig
 
   type error
@@ -76,8 +74,8 @@ module type S = sig
   val read_line: t -> (buffer list Mirage_flow.or_eof, error) result io
   (** [read_line t] reads a line of input, which is terminated
       either by a CRLF sequence, or the end of the channel (which
-      counts as a line).  @return Returns a list of views that
-      terminates at EOF. *)
+      counts as a line).
+      @return Returns a list of views that terminates at EOF. *)
 
   val write_char: t -> char -> unit
   (** [write_char t ch] writes a single character to the output
