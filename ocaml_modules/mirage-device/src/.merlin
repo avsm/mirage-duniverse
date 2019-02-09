@@ -1,6 +1,8 @@
-B ../_build/default/src
-FLG -w -40
-PKG fmt
-PKG result
-PKG uchar
+EXCLUDE_QUERY_DIR
+B ../../../_build/default/ocaml_modules/fmt/src/.fmt.objs/byte
+B ../../../_build/default/ocaml_modules/mirage-device/src/.mirage_device.objs/byte
+B ../../../_build/default/ocaml_modules/result/.result.objs/byte
+S ../../fmt/src
 S .
+S ../../result
+FLG -w -40

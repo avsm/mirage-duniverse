@@ -1,4 +1,4 @@
-# 1 "compiler/lib/annot_lexer.mll"
+# 1 "ocaml_modules/js_of_ocaml/compiler/lib/annot_lexer.mll"
  
 (* Js_of_ocaml compiler
  * http://www.ocsigen.org/js_of_ocaml/
@@ -20,7 +20,7 @@
  *)
 open Annot_parser
 
-# 24 "compiler/lib/annot_lexer.ml"
+# 24 "ocaml_modules/js_of_ocaml/compiler/lib/annot_lexer.ml"
 let __ocaml_lex_tables = {
   Lexing.lex_base =
    "\000\000\231\255\232\255\233\255\002\000\235\255\002\000\003\000\
@@ -1696,133 +1696,133 @@ let rec initial lexbuf =
 and __ocaml_lex_initial_rec lexbuf __ocaml_lex_state =
   match Lexing.engine __ocaml_lex_tables __ocaml_lex_state lexbuf with
       | 0 ->
-# 26 "compiler/lib/annot_lexer.mll"
+# 26 "ocaml_modules/js_of_ocaml/compiler/lib/annot_lexer.mll"
                (TProvides)
-# 1702 "compiler/lib/annot_lexer.ml"
+# 1702 "ocaml_modules/js_of_ocaml/compiler/lib/annot_lexer.ml"
 
   | 1 ->
-# 27 "compiler/lib/annot_lexer.mll"
+# 27 "ocaml_modules/js_of_ocaml/compiler/lib/annot_lexer.mll"
                (TRequires)
-# 1707 "compiler/lib/annot_lexer.ml"
+# 1707 "ocaml_modules/js_of_ocaml/compiler/lib/annot_lexer.ml"
 
   | 2 ->
-# 28 "compiler/lib/annot_lexer.mll"
+# 28 "ocaml_modules/js_of_ocaml/compiler/lib/annot_lexer.mll"
            (TA_Pure )
-# 1712 "compiler/lib/annot_lexer.ml"
+# 1712 "ocaml_modules/js_of_ocaml/compiler/lib/annot_lexer.ml"
 
   | 3 ->
-# 29 "compiler/lib/annot_lexer.mll"
+# 29 "ocaml_modules/js_of_ocaml/compiler/lib/annot_lexer.mll"
             (TA_Const )
-# 1717 "compiler/lib/annot_lexer.ml"
+# 1717 "ocaml_modules/js_of_ocaml/compiler/lib/annot_lexer.ml"
 
   | 4 ->
-# 30 "compiler/lib/annot_lexer.mll"
+# 30 "ocaml_modules/js_of_ocaml/compiler/lib/annot_lexer.mll"
               (TA_Mutable )
-# 1722 "compiler/lib/annot_lexer.ml"
+# 1722 "ocaml_modules/js_of_ocaml/compiler/lib/annot_lexer.ml"
 
   | 5 ->
-# 31 "compiler/lib/annot_lexer.mll"
+# 31 "ocaml_modules/js_of_ocaml/compiler/lib/annot_lexer.mll"
               (TA_Mutator )
-# 1727 "compiler/lib/annot_lexer.ml"
+# 1727 "ocaml_modules/js_of_ocaml/compiler/lib/annot_lexer.ml"
 
   | 6 ->
-# 32 "compiler/lib/annot_lexer.mll"
+# 32 "ocaml_modules/js_of_ocaml/compiler/lib/annot_lexer.mll"
               (TA_Shallow)
-# 1732 "compiler/lib/annot_lexer.ml"
+# 1732 "ocaml_modules/js_of_ocaml/compiler/lib/annot_lexer.ml"
 
   | 7 ->
-# 33 "compiler/lib/annot_lexer.mll"
+# 33 "ocaml_modules/js_of_ocaml/compiler/lib/annot_lexer.mll"
                      (TA_Object_literal)
-# 1737 "compiler/lib/annot_lexer.ml"
+# 1737 "ocaml_modules/js_of_ocaml/compiler/lib/annot_lexer.ml"
 
   | 8 ->
-# 34 "compiler/lib/annot_lexer.mll"
+# 34 "ocaml_modules/js_of_ocaml/compiler/lib/annot_lexer.mll"
               (TVersion)
-# 1742 "compiler/lib/annot_lexer.ml"
+# 1742 "ocaml_modules/js_of_ocaml/compiler/lib/annot_lexer.ml"
 
   | 9 ->
-# 35 "compiler/lib/annot_lexer.mll"
+# 35 "ocaml_modules/js_of_ocaml/compiler/lib/annot_lexer.mll"
               (TWeakdef)
-# 1747 "compiler/lib/annot_lexer.ml"
+# 1747 "ocaml_modules/js_of_ocaml/compiler/lib/annot_lexer.ml"
 
   | 10 ->
-# 36 "compiler/lib/annot_lexer.mll"
+# 36 "ocaml_modules/js_of_ocaml/compiler/lib/annot_lexer.mll"
                                                          (
       let x = Lexing.lexeme lexbuf in
       TIdent x)
-# 1754 "compiler/lib/annot_lexer.ml"
+# 1754 "ocaml_modules/js_of_ocaml/compiler/lib/annot_lexer.ml"
 
   | 11 ->
-# 39 "compiler/lib/annot_lexer.mll"
+# 39 "ocaml_modules/js_of_ocaml/compiler/lib/annot_lexer.mll"
                                     (
       let x = Lexing.lexeme lexbuf in
       TVNum x)
-# 1761 "compiler/lib/annot_lexer.ml"
+# 1761 "ocaml_modules/js_of_ocaml/compiler/lib/annot_lexer.ml"
 
   | 12 ->
-# 42 "compiler/lib/annot_lexer.mll"
+# 42 "ocaml_modules/js_of_ocaml/compiler/lib/annot_lexer.mll"
         (LPARENT)
-# 1766 "compiler/lib/annot_lexer.ml"
+# 1766 "ocaml_modules/js_of_ocaml/compiler/lib/annot_lexer.ml"
 
   | 13 ->
-# 43 "compiler/lib/annot_lexer.mll"
+# 43 "ocaml_modules/js_of_ocaml/compiler/lib/annot_lexer.mll"
         (RPARENT)
-# 1771 "compiler/lib/annot_lexer.ml"
+# 1771 "ocaml_modules/js_of_ocaml/compiler/lib/annot_lexer.ml"
 
   | 14 ->
-# 44 "compiler/lib/annot_lexer.mll"
+# 44 "ocaml_modules/js_of_ocaml/compiler/lib/annot_lexer.mll"
         (TComma)
-# 1776 "compiler/lib/annot_lexer.ml"
+# 1776 "ocaml_modules/js_of_ocaml/compiler/lib/annot_lexer.ml"
 
   | 15 ->
-# 45 "compiler/lib/annot_lexer.mll"
+# 45 "ocaml_modules/js_of_ocaml/compiler/lib/annot_lexer.mll"
         (TSemi)
-# 1781 "compiler/lib/annot_lexer.ml"
+# 1781 "ocaml_modules/js_of_ocaml/compiler/lib/annot_lexer.ml"
 
   | 16 ->
-# 46 "compiler/lib/annot_lexer.mll"
+# 46 "ocaml_modules/js_of_ocaml/compiler/lib/annot_lexer.mll"
          (LE)
-# 1786 "compiler/lib/annot_lexer.ml"
+# 1786 "ocaml_modules/js_of_ocaml/compiler/lib/annot_lexer.ml"
 
   | 17 ->
-# 47 "compiler/lib/annot_lexer.mll"
+# 47 "ocaml_modules/js_of_ocaml/compiler/lib/annot_lexer.mll"
          (LT)
-# 1791 "compiler/lib/annot_lexer.ml"
+# 1791 "ocaml_modules/js_of_ocaml/compiler/lib/annot_lexer.ml"
 
   | 18 ->
-# 48 "compiler/lib/annot_lexer.mll"
+# 48 "ocaml_modules/js_of_ocaml/compiler/lib/annot_lexer.mll"
          (GT)
-# 1796 "compiler/lib/annot_lexer.ml"
+# 1796 "ocaml_modules/js_of_ocaml/compiler/lib/annot_lexer.ml"
 
   | 19 ->
-# 49 "compiler/lib/annot_lexer.mll"
+# 49 "ocaml_modules/js_of_ocaml/compiler/lib/annot_lexer.mll"
          (GE)
-# 1801 "compiler/lib/annot_lexer.ml"
+# 1801 "ocaml_modules/js_of_ocaml/compiler/lib/annot_lexer.ml"
 
   | 20 ->
-# 50 "compiler/lib/annot_lexer.mll"
+# 50 "ocaml_modules/js_of_ocaml/compiler/lib/annot_lexer.mll"
          (EQ)
-# 1806 "compiler/lib/annot_lexer.ml"
+# 1806 "ocaml_modules/js_of_ocaml/compiler/lib/annot_lexer.ml"
 
   | 21 ->
-# 51 "compiler/lib/annot_lexer.mll"
+# 51 "ocaml_modules/js_of_ocaml/compiler/lib/annot_lexer.mll"
                ( initial lexbuf )
-# 1811 "compiler/lib/annot_lexer.ml"
+# 1811 "ocaml_modules/js_of_ocaml/compiler/lib/annot_lexer.ml"
 
   | 22 ->
-# 52 "compiler/lib/annot_lexer.mll"
+# 52 "ocaml_modules/js_of_ocaml/compiler/lib/annot_lexer.mll"
         ( EOF )
-# 1816 "compiler/lib/annot_lexer.ml"
+# 1816 "ocaml_modules/js_of_ocaml/compiler/lib/annot_lexer.ml"
 
   | 23 ->
-# 53 "compiler/lib/annot_lexer.mll"
+# 53 "ocaml_modules/js_of_ocaml/compiler/lib/annot_lexer.mll"
            (EOL)
-# 1821 "compiler/lib/annot_lexer.ml"
+# 1821 "ocaml_modules/js_of_ocaml/compiler/lib/annot_lexer.ml"
 
   | 24 ->
-# 54 "compiler/lib/annot_lexer.mll"
+# 54 "ocaml_modules/js_of_ocaml/compiler/lib/annot_lexer.mll"
       ( TOTHER(Lexing.lexeme lexbuf) )
-# 1826 "compiler/lib/annot_lexer.ml"
+# 1826 "ocaml_modules/js_of_ocaml/compiler/lib/annot_lexer.ml"
 
   | __ocaml_lex_state -> lexbuf.Lexing.refill_buff lexbuf;
       __ocaml_lex_initial_rec lexbuf __ocaml_lex_state

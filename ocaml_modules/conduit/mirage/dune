@@ -6,4 +6,4 @@
   (wrapped     false)
   (libraries   conduit conduit-lwt mirage-stack-lwt mirage-time-lwt
                mirage-flow-lwt mirage-dns ipaddr.sexp
-               vchan tls tls.mirage xenstore.client))
+               vchan tls tls-mirage xenstore.client))
